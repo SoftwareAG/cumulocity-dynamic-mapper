@@ -122,6 +122,9 @@ public class KafkaClient {
 //    private MqttClient mqttClient;
     private KafkaConsumer<String, String> kafkaConsumer;
 
+    @Autowired
+    private SimpleJsonDispatcher simpleJsonDispatcher;
+    
     private C8YAgent c8yAgent;
 
     @Autowired
@@ -318,8 +321,8 @@ public class KafkaClient {
 			ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofMillis(100));
 			records.forEach(record -> {
 				log.info("offset = {}, key = {}, value = {}", record.offset(), record.key(), record.value());
-				//TODO: add message handling
-			});;
+				simpleJsonDispatcher.createMeasurement(record.value());
+			});
 		}		
 		
 	}
