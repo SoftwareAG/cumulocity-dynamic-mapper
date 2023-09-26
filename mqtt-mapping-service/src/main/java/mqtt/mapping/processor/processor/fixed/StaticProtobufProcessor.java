@@ -34,7 +34,7 @@ import mqtt.mapping.processor.inbound.BasePayloadProcessor;
 import mqtt.mapping.processor.model.MappingType;
 import mqtt.mapping.processor.model.ProcessingContext;
 import mqtt.mapping.processor.model.RepairStrategy;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.joda.time.DateTime;
 import org.springframework.stereotype.Service;
@@ -49,7 +49,7 @@ import java.util.Map;
 @Service
 public class StaticProtobufProcessor extends BasePayloadProcessor<byte[]> {
 
-    public StaticProtobufProcessor(ObjectMapper objectMapper, MQTTClient mqttClient, C8YAgent c8yAgent) {
+    public StaticProtobufProcessor(ObjectMapper objectMapper, KafkaClient mqttClient, C8YAgent c8yAgent) {
         super(objectMapper, mqttClient, c8yAgent);
     }
 

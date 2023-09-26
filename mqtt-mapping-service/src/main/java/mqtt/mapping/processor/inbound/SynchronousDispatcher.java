@@ -34,7 +34,7 @@ import mqtt.mapping.processor.model.C8YRequest;
 import mqtt.mapping.processor.model.MappingType;
 import mqtt.mapping.processor.model.ProcessingContext;
 import mqtt.mapping.processor.system.SysHandler;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 import org.apache.commons.codec.binary.Hex;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -57,7 +57,7 @@ public class SynchronousDispatcher implements MqttCallback {
     protected C8YAgent c8yAgent;
 
     @Autowired
-    protected MQTTClient mqttClient;
+    protected KafkaClient mqttClient;
     
     @Autowired
     protected ObjectMapper objectMapper;

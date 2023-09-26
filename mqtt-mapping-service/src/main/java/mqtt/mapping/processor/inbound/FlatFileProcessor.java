@@ -26,7 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import mqtt.mapping.core.C8YAgent;
 import mqtt.mapping.processor.model.PayloadWrapper;
 import mqtt.mapping.processor.model.ProcessingContext;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.springframework.stereotype.Service;
 
@@ -37,7 +37,7 @@ import java.nio.charset.Charset;
 public class FlatFileProcessor extends JSONProcessor {
 
 
-    public FlatFileProcessor( ObjectMapper objectMapper, MQTTClient mqttClient, C8YAgent c8yAgent){
+    public FlatFileProcessor( ObjectMapper objectMapper, KafkaClient mqttClient, C8YAgent c8yAgent){
         super(objectMapper, mqttClient, c8yAgent);
     }
 

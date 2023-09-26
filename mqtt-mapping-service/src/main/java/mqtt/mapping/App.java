@@ -87,7 +87,7 @@ import mqtt.mapping.processor.model.MappingType;
 import mqtt.mapping.processor.outbound.BasePayloadProcessorOutbound;
 import mqtt.mapping.processor.outbound.JSONProcessorOutbound;
 import mqtt.mapping.processor.processor.fixed.StaticProtobufProcessor;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 
 @MicroserviceApplication
 @EnableContextSupport
@@ -123,7 +123,7 @@ public class App {
 
     @Bean("payloadProcessorsInbound")
     public Map<MappingType, BasePayloadProcessor<?>> payloadProcessorsInbound(ObjectMapper objectMapper,
-            @Lazy MQTTClient mqttClient,
+            @Lazy KafkaClient mqttClient,
             @Lazy C8YAgent c8yAgent) {
         return Map.of(
                 MappingType.JSON, new JSONProcessor(objectMapper, mqttClient, c8yAgent),
@@ -135,7 +135,7 @@ public class App {
 
     @Bean("payloadProcessorsOutbound")
     public Map<MappingType, BasePayloadProcessorOutbound<?>> payloadProcessorsOutbound(ObjectMapper objectMapper,
-            MQTTClient mqttClient,
+            KafkaClient mqttClient,
             C8YAgent c8yAgent) {
         return Map.of(
                 MappingType.JSON, new JSONProcessorOutbound(objectMapper, mqttClient, c8yAgent));

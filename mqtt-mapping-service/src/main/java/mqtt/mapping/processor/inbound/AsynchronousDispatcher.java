@@ -52,7 +52,7 @@ import mqtt.mapping.processor.model.C8YRequest;
 import mqtt.mapping.processor.model.MappingType;
 import mqtt.mapping.processor.model.ProcessingContext;
 import mqtt.mapping.processor.system.SysHandler;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 
 @Slf4j
 @Service
@@ -181,10 +181,10 @@ public class AsynchronousDispatcher implements MqttCallback {
         this.c8yAgent = c8yAgent;
     }
 
-    private MQTTClient mqttClient;
+    private KafkaClient mqttClient;
 
     @Autowired
-    public void setMQTTClient(@Lazy MQTTClient mqttClient) {
+    public void setMQTTClient(@Lazy KafkaClient mqttClient) {
         this.mqttClient = mqttClient;
     }
 

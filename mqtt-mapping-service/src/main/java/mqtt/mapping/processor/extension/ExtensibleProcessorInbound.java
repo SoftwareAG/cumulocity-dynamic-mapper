@@ -30,7 +30,7 @@ import mqtt.mapping.model.ExtensionStatus;
 import mqtt.mapping.processor.ProcessingException;
 import mqtt.mapping.processor.inbound.BasePayloadProcessor;
 import mqtt.mapping.processor.model.ProcessingContext;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.springframework.stereotype.Service;
 
@@ -44,7 +44,7 @@ public class ExtensibleProcessorInbound extends BasePayloadProcessor<byte[]> {
 
     private Map<String, Extension> extensions = new HashMap<>();
 
-    public ExtensibleProcessorInbound(ObjectMapper objectMapper, MQTTClient mqttClient, C8YAgent c8yAgent) {
+    public ExtensibleProcessorInbound(ObjectMapper objectMapper, KafkaClient mqttClient, C8YAgent c8yAgent) {
         super(objectMapper, mqttClient, c8yAgent);
     }
 

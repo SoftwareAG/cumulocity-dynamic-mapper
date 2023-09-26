@@ -40,7 +40,7 @@ import mqtt.mapping.model.MappingSubstitution.SubstituteValue.TYPE;
 import mqtt.mapping.processor.ProcessingException;
 import mqtt.mapping.processor.model.ProcessingContext;
 import mqtt.mapping.processor.model.RepairStrategy;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.joda.time.DateTime;
 import org.springframework.stereotype.Service;
@@ -54,7 +54,7 @@ import java.util.Map;
 @Service
 public class JSONProcessor extends BasePayloadProcessor<JsonNode> {
 
-    public JSONProcessor ( ObjectMapper objectMapper, MQTTClient mqttClient, C8YAgent c8yAgent){
+    public JSONProcessor ( ObjectMapper objectMapper, KafkaClient mqttClient, C8YAgent c8yAgent){
         super(objectMapper, mqttClient, c8yAgent);
     }
 

@@ -41,7 +41,7 @@ import mqtt.mapping.model.MappingSubstitution.SubstituteValue.TYPE;
 import mqtt.mapping.processor.C8YMessage;
 import mqtt.mapping.processor.ProcessingException;
 import mqtt.mapping.processor.model.ProcessingContext;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -53,7 +53,7 @@ import java.util.Map;
 @Service
 public class JSONProcessorOutbound extends BasePayloadProcessorOutbound<JsonNode> {
 
-    public JSONProcessorOutbound(ObjectMapper objectMapper, MQTTClient mqttClient, C8YAgent c8yAgent) {
+    public JSONProcessorOutbound(ObjectMapper objectMapper, KafkaClient mqttClient, C8YAgent c8yAgent) {
         super(objectMapper, mqttClient, c8yAgent);
     }
 

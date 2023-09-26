@@ -36,7 +36,7 @@ import mqtt.mapping.core.ServiceStatus;
 import mqtt.mapping.model.*;
 import mqtt.mapping.model.Mapping;
 import mqtt.mapping.processor.model.ProcessingContext;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -55,7 +55,7 @@ import java.util.Map;
 public class MQTTMappingRestController {
 
     @Autowired
-    MQTTClient mqttClient;
+    KafkaClient mqttClient;
 
     @Autowired
     C8YAgent c8yAgent;
