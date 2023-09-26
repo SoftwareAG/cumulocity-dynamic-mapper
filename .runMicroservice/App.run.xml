@@ -1,0 +1,18 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="App" type="Application" factoryName="Application" nameIsGenerated="true">
+    <envs>
+      <env name="C8Y_MICROSERVICE_ISOLATION" value="MULTI_TENANT" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="mqtt.mapping.App" />
+    <module name="mqtt-mapping-service" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="mqtt.mapping.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
