@@ -114,6 +114,11 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.cumulocity.client.mqtt</groupId>
+            <artifactId>mqtt-connect-websocket</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

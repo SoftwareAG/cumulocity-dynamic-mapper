@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
 
+import mqtt.mapping.service.MQTTConnectClient;
 import org.apache.commons.io.IOUtils;
 import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -126,11 +127,20 @@ public class C8YAgent implements ImportBeanDefinitionRegistrar {
     @Autowired
     private MicroserviceSubscriptionsService subscriptionsService;
 
-    private MQTTClient mqttClient;
+    //private MQTTClient mqttClient;
 
+    private MQTTConnectClient mqttConnectClient;
+
+    /*
     @Autowired
     public void setMQTTClient(@Lazy MQTTClient mqttClient) {
         this.mqttClient = mqttClient;
+    }
+     */
+
+    @Autowired
+    public void setMqttConnectClient(@Lazy MQTTConnectClient mqttConnectClient) {
+        this.mqttConnectClient = mqttConnectClient;
     }
 
     private ObjectMapper objectMapper;
@@ -209,8 +219,10 @@ public class C8YAgent implements ImportBeanDefinitionRegistrar {
         // this.createEvent("MQTT Mapper Microservice terminated",
         // "mqtt_microservice_stopevent", DateTime.now(), null);
         notificationSubscriber.disconnect(null);
-        if (mqttClient != null)
-            mqttClient.disconnect();
+        //if (mqttClient != null)
+        //    mqttClient.disconnect();
+        if (mqttConnectClient != null)
+            mqttConnectClient.disconnect();
     }
 
     @EventListener
@@ -271,6 +283,7 @@ public class C8YAgent implements ImportBeanDefinitionRegistrar {
             notificationSubscriber.init();
             // notificationSubscriber.subscribeTenant(tenant);
             // notificationSubscriber.subscribeAllDevices();
+
             return amo;
 
         });
@@ -279,6 +292,7 @@ public class C8YAgent implements ImportBeanDefinitionRegistrar {
         mappingServiceRepresentation = objectMapper.convertValue(mappingServiceMOR, MappingServiceRepresentation.class);
         mappingComponent.initializeMappingComponent(mappingServiceRepresentation);
 
+        /*
         try {
             mqttClient.submitInitialize();
             mqttClient.submitConnect();
@@ -286,6 +300,16 @@ public class C8YAgent implements ImportBeanDefinitionRegistrar {
         } catch (Exception e) {
             log.error("Error on MQTT Connection: ", e);
             mqttClient.submitConnect();
+        }
+         */
+
+        try {
+            mqttConnectClient.initialize(tenant);
+            mqttConnectClient.submitConnect();
+            mqttConnectClient.runHouskeeping();
+        } catch (Exception e) {
+            log.error("Error on MQTT Connect Connection: ", e);
+
         }
     }
 
