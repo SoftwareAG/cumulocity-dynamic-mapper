@@ -94,7 +94,7 @@ import mqtt.mapping.processor.inbound.BasePayloadProcessor;
 import mqtt.mapping.processor.model.C8YRequest;
 import mqtt.mapping.processor.model.MappingType;
 import mqtt.mapping.processor.model.ProcessingContext;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 
 @Slf4j
 @Service
@@ -126,10 +126,10 @@ public class C8YAgent implements ImportBeanDefinitionRegistrar {
     @Autowired
     private MicroserviceSubscriptionsService subscriptionsService;
 
-    private MQTTClient mqttClient;
+    private KafkaClient mqttClient;
 
     @Autowired
-    public void setMQTTClient(@Lazy MQTTClient mqttClient) {
+    public void setMQTTClient(@Lazy KafkaClient mqttClient) {
         this.mqttClient = mqttClient;
     }
 
@@ -391,7 +391,7 @@ public class C8YAgent implements ImportBeanDefinitionRegistrar {
         });
     }
 
-    public MQTTClient.Certificate loadCertificateByName(String fingerprint) {
+    public KafkaClient.Certificate loadCertificateByName(String fingerprint) {
         TrustedCertificateRepresentation result = subscriptionsService.callForTenant(tenant, () -> {
             return serviceConfigurationComponent.loadCertificateByName(fingerprint, credentials);
         });
@@ -400,7 +400,7 @@ public class C8YAgent implements ImportBeanDefinitionRegistrar {
                 .append(result.getCertInPemFormat())
                 .append("\n").append("-----END CERTIFICATE-----");
 
-        return new MQTTClient.Certificate(result.getFingerprint(), cert.toString());
+        return new KafkaClient.Certificate(result.getFingerprint(), cert.toString());
     }
 
     public AbstractExtensibleRepresentation createMEAO(ProcessingContext<?> context) throws ProcessingException {

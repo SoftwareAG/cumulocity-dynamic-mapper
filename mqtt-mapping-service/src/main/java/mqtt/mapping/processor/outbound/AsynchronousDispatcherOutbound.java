@@ -42,7 +42,7 @@ import mqtt.mapping.processor.model.C8YRequest;
 import mqtt.mapping.processor.model.MappingType;
 import mqtt.mapping.processor.model.ProcessingContext;
 import mqtt.mapping.processor.system.SysHandler;
-import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.KafkaClient;
 import org.apache.commons.codec.binary.Hex;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -222,7 +222,7 @@ public class AsynchronousDispatcherOutbound implements NotificationCallback {
     protected C8YAgent c8yAgent;
 
     @Autowired
-    protected MQTTClient mqttClient;
+    protected KafkaClient mqttClient;
 
     @Autowired
     protected ObjectMapper objectMapper;
