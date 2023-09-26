@@ -302,8 +302,8 @@ public class MQTTClient {
                 // test if the mqtt connection is configured and enabled
                 if (shouldConnect()) {
                     try {
-                        // is not working for broker.emqx.io
-                        subscribe("$SYS/#", 0);
+                        // is not working for broker.emqx.io & MQTT Connect
+                        //subscribe("$SYS/#", 0);
                     } catch (Exception e) {
                         log.warn(
                                 "Error on subscribing to topic $SYS/#, this might not be supported by the mqtt broker {} {}",
