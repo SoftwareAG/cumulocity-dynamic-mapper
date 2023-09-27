@@ -495,7 +495,12 @@ public class C8YAPISubscriber {
 
     public CustomWebSocketClient connect(String token, NotificationCallback callback) throws URISyntaxException {
         try {
-            baseUrl = baseUrl.replace("http", "ws");
+            if (baseUrl.contains("http")) {
+                baseUrl = baseUrl.replace("http", "ws");
+            } else if (baseUrl.contains("https")) {
+                baseUrl = baseUrl.replace("https", "wss");
+            }
+
             URI webSocketUrl = new URI(baseUrl + WEBSOCKET_PATH + token);
             final CustomWebSocketClient client = new CustomWebSocketClient(webSocketUrl, callback);
             client.setConnectionLostTimeout(30);

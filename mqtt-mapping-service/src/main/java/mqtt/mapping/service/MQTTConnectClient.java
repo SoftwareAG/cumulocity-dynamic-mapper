@@ -15,6 +15,7 @@ import mqtt.mapping.core.C8YAgent;
 import mqtt.mapping.core.MappingComponent;
 import mqtt.mapping.core.ServiceStatus;
 import mqtt.mapping.model.Mapping;
+import mqtt.mapping.processor.inbound.AsynchronousDispatcher;
 import mqtt.mapping.processor.model.ProcessingContext;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -47,6 +48,13 @@ public class MQTTConnectClient {
     private String baseUrl;
 
     private Instant start = Instant.now();
+
+    private AsynchronousDispatcher dispatcher;
+
+    @Autowired
+    public void setDispatcher(AsynchronousDispatcher dispatcher) {
+        this.dispatcher = dispatcher;
+    }
 
     private static final int WAIT_PERIOD_MS = 10000;
 
@@ -94,8 +102,13 @@ public class MQTTConnectClient {
     MqttClient client;
 
     public void initialize(String tenant) {
+        if (baseUrl.contains("http")) {
+            baseUrl = baseUrl.replace("http", "ws");
+        } else if (baseUrl.contains("https")) {
+            baseUrl = baseUrl.replace("https", "wss");
+        }
         this.client = MqttClient.webSocket()
-                .url("ws://" + baseUrl)
+                .url(baseUrl)
                 .tokenApi(platform.getTokenApi())
                 .build();
     }
@@ -105,20 +118,33 @@ public class MQTTConnectClient {
     }
 
     public void subscribe(String topic) {
-        //Assuming topic is uniquely subscribed by subscriber.
-        MqttSubscriber subscriber = client.buildSubscriber(MqttConfig.webSocket().subscriber(SUBSCRIBER_ID).topic(topic).build());
-        subscriber.subscribe(new MqttMessageListener() {
-            @Override
-            public void onMessage(final MqttMessage message) {
-                log.info("Received message {}", message);
-            }
+        contextService.runForEachTenant(() -> {
+            //Assuming topic is uniquely subscribed by subscriber.
+            MqttSubscriber subscriber = client.buildSubscriber(MqttConfig.webSocket().subscriber(SUBSCRIBER_ID).topic(topic).build());
+            final String mqtttopic = topic;
+            subscriber.subscribe(new MqttMessageListener() {
+                @Override
+                public void onMessage(final MqttMessage message) {
+                    org.eclipse.paho.client.mqttv3.MqttMessage mqttMessage = new org.eclipse.paho.client.mqttv3.MqttMessage();
+                    mqttMessage.setPayload(message.getPayload());
+                    mqttMessage.setId(message.getMetadata().getMessageId());
+                    //FIXME: QoS is missing in the response
+                    mqttMessage.setQos(1);
+                    try {
+                        dispatcher.messageArrived(mqtttopic, mqttMessage);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    log.info("Received message {}", new String(message.getPayload()));
+                }
 
-            @Override
-            public void onError(final Throwable throwable) {
-                log.error("Web socket error", throwable);
-            }
+                @Override
+                public void onError(final Throwable throwable) {
+                    log.error("Web socket error", throwable);
+                }
+            });
+            subscribers.put(topic, subscriber);
         });
-        subscribers.put(topic, subscriber);
     }
 
     public void reconnect() {
