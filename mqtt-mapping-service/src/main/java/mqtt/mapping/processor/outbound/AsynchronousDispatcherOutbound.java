@@ -43,6 +43,7 @@ import mqtt.mapping.processor.model.MappingType;
 import mqtt.mapping.processor.model.ProcessingContext;
 import mqtt.mapping.processor.system.SysHandler;
 import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.MQTTConnectClient;
 import org.apache.commons.codec.binary.Hex;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -223,6 +224,9 @@ public class AsynchronousDispatcherOutbound implements NotificationCallback {
 
     @Autowired
     protected MQTTClient mqttClient;
+
+    @Autowired
+    protected MQTTConnectClient mqttConnectClient;
 
     @Autowired
     protected ObjectMapper objectMapper;

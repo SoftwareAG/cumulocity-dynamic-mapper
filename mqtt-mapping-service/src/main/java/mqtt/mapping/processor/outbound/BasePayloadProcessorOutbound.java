@@ -42,6 +42,7 @@ import mqtt.mapping.processor.model.ProcessingContext;
 import mqtt.mapping.processor.model.RepairStrategy;
 import mqtt.mapping.processor.system.SysHandler;
 import mqtt.mapping.service.MQTTClient;
+import mqtt.mapping.service.MQTTConnectClient;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,10 +58,11 @@ import java.util.Set;
 @Service
 public abstract class BasePayloadProcessorOutbound<T> {
 
-    public BasePayloadProcessorOutbound(ObjectMapper objectMapper, MQTTClient mqttClient, C8YAgent c8yAgent) {
+    public BasePayloadProcessorOutbound(ObjectMapper objectMapper, MQTTClient mqttClient, C8YAgent c8yAgent, MQTTConnectClient mqttConnectClient) {
         this.objectMapper = objectMapper;
         this.mqttClient = mqttClient;
         this.c8yAgent = c8yAgent;
+        this.mqttConnectClient = mqttConnectClient;
     }
 
     protected C8YAgent c8yAgent;
@@ -68,6 +70,7 @@ public abstract class BasePayloadProcessorOutbound<T> {
     protected ObjectMapper objectMapper;
 
     protected MQTTClient mqttClient;
+    protected MQTTConnectClient mqttConnectClient;
 
     @Autowired
     SysHandler sysHandler;
