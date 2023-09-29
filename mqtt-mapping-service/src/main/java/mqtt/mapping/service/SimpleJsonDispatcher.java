@@ -37,6 +37,7 @@ public class SimpleJsonDispatcher {
 		try {
 			MeasurementRepresentation measurement = objectMapper.readValue(json, MeasurementRepresentation.class);
 			subscriptionsService.callForTenant(tenant, ()->measurementApi.create(measurement));
+			log.info("successfully created measurement: {}", measurement);
 		} catch (Exception e) {
 			log.error("error!", e);
 		}
