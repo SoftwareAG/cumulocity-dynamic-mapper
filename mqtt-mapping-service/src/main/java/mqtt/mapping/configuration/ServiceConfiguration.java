@@ -41,13 +41,13 @@ public class ServiceConfiguration implements Cloneable {
 
     @NotNull
     @JsonSetter(nulls = Nulls.SKIP)
-    public boolean logPayload;
+    public boolean logPayload = false;
 
     @NotNull
     @JsonSetter(nulls = Nulls.SKIP)
-    public boolean logSubstitution;
+    public boolean logSubstitution = false;
 
     @NotNull
     @JsonSetter(nulls = Nulls.SKIP)
-    public boolean externalExtensionEnabled;
+    public boolean externalExtensionEnabled = false;
 }
