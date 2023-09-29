@@ -155,12 +155,12 @@ public class AsynchronousDispatcherOutbound implements NotificationCallback {
                     if (processor != null) {
                         try {
                             processor.deserializePayload(context, c8yMessage);
-                            if (c8yAgent.getServiceConfiguration().logPayload) {
-                                log.info("New message on topic: '{}', wrapped message: {}", context.getTopic(),
-                                        context.getPayload().toString());
-                            } else {
-                                log.info("New message on topic: '{}'", context.getTopic());
-                            }
+//                            if (c8yAgent.getServiceConfiguration().logPayload) {
+//                                log.info("New message on topic: '{}', wrapped message: {}", context.getTopic(),
+//                                        context.getPayload().toString());
+//                            } else {
+//                                log.info("New message on topic: '{}'", context.getTopic());
+//                            }
                             mappingStatus.messagesReceived++;
                             if (mapping.snoopStatus == SnoopStatus.ENABLED
                                     || mapping.snoopStatus == SnoopStatus.STARTED) {
