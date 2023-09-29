@@ -289,7 +289,7 @@ public class KafkaClient {
         return true;
     }
 
-    private void initializeKafkaConsumer() {
+	private void initializeKafkaConsumer() {
 		String username = "dghhrmxn";
 		String password = "Qs40SS54to6_CAfRqdHwZu7GQxWE2OXE";
 
@@ -317,13 +317,17 @@ public class KafkaClient {
 		kafkaConsumer = new KafkaConsumer<>(props);		
 		kafkaConsumer.subscribe(Arrays.asList("dghhrmxn-quickstart-events"));
 		
-		while (true) {
-			ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofMillis(100));
-			records.forEach(record -> {
-				log.info("offset = {}, key = {}, value = {}", record.offset(), record.key(), record.value());
-				simpleJsonDispatcher.createMeasurement(record.value());
-			});
-		}		
+		new Thread(() -> {
+			while (true) {
+				ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofMillis(100));
+				records.forEach(record -> {
+					log.info("offset = {}, key = {}, value = {}", record.offset(), record.key(), record.value());
+					simpleJsonDispatcher.createMeasurement(record.value());
+				});
+			}		
+		}).start();
+		
+	}
 		
 	}
 
