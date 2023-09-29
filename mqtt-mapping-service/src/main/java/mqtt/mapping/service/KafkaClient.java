@@ -55,6 +55,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -121,6 +123,7 @@ public class KafkaClient {
 
 //    private MqttClient mqttClient;
     private KafkaConsumer<String, String> kafkaConsumer;
+    private KafkaProducer<String, String> kafkaProducer;
 
     @Autowired
     private SimpleJsonDispatcher simpleJsonDispatcher;
@@ -249,6 +252,7 @@ public class KafkaClient {
                         }
 
                         initializeKafkaConsumer();
+                        initializeKafkaProducer();
                         
                         //TODO: mqttClient.setCallback(dispatcher);
 
@@ -328,6 +332,27 @@ public class KafkaClient {
 		}).start();
 		
 	}
+	
+	private void initializeKafkaProducer() {
+		
+		String username = "dghhrmxn";
+		String password = "Qs40SS54to6_CAfRqdHwZu7GQxWE2OXE";
+		
+		String jaasTemplate = "org.apache.kafka.common.security.scram.ScramLoginModule required username=\"%s\" password=\"%s\";";
+		String jaasCfg = String.format(jaasTemplate, username, password);
+		String serializer = StringSerializer.class.getName();
+		
+		Properties props = new Properties();
+		props.put("bootstrap.servers", "glider.srvs.cloudkafka.com:9094");
+		props.put("key.serializer", serializer);
+		props.put("value.serializer", serializer);
+		props.put("security.protocol", "SASL_SSL");
+		props.put("sasl.mechanism", "SCRAM-SHA-256");
+		props.put("sasl.jaas.config", jaasCfg);
+		props.put("linger.ms", 1);
+		props.put("enable.idempotence", false);
+		
+		kafkaProducer = new KafkaProducer<>(props);
 		
 	}
 
@@ -339,7 +364,7 @@ public class KafkaClient {
     }
 
     private boolean shouldConnect() {
-        return !ConfigurationConnection.isValid(connectionConfiguration)
+        return true || !ConfigurationConnection.isValid(connectionConfiguration)
                 || ConfigurationConnection.isEnabled(connectionConfiguration);
     }
 
@@ -558,10 +583,15 @@ public class KafkaClient {
 
     public AbstractExtensibleRepresentation createMEAO(ProcessingContext<?> context)
             throws MqttPersistenceException, MqttException {
-        MqttMessage mqttMessage = new MqttMessage();
         String payload = context.getCurrentRequest().getRequest();
-        mqttMessage.setPayload(payload.getBytes());
-        //TODO@Harald mqttClient.publish(context.getResolvedPublishTopic(), mqttMessage);
+//        MqttMessage mqttMessage = new MqttMessage();
+//        mqttMessage.setPayload(payload.getBytes());
+        //mqttClient.publish(context.getResolvedPublishTopic(), mqttMessage);
+        
+//        kafkaProducer.send(new ProducerRecord<String, String>(context.getMapping().publishTopic, 0, payload));
+        initializeKafkaProducer();
+        kafkaProducer.send(new ProducerRecord<String, String>("dghhrmxn-default", "0", payload));
+        
         log.info("Published outbound message: {} for mapping: {} ", payload, context.getMapping().name);
         return null;
     }
