@@ -43,20 +43,18 @@ import java.util.stream.Stream;
  * <code>cardinality</code>, <code>needsRepair</code>
  * when a <code>mapping</code> is applied to an inbound <code>payload</code>
  */
-public class ProcessingContext<O> {
+public class ProcessingContext<P, W extends ProcessingPayload<P>>{
     private Mapping mapping;
 
     private String topic;
 
     private String resolvedPublishTopic;
 
-    private O payload;
-
-    private byte[] payloadRaw;
+    private ProcessingPayload<P> payloadWrapper;
 
     private List<C8YRequest> requests = new ArrayList<C8YRequest>();
 
-    private List<Exception> errors  = new ArrayList<Exception>();
+    private List<Exception> errors = new ArrayList<Exception>();
 
     private ProcessingType processingType = ProcessingType.UNDEFINED;
 
@@ -65,7 +63,7 @@ public class ProcessingContext<O> {
     private MappingType mappingType;
 
     private Map<String, List<SubstituteValue>> postProcessingCache = new HashMap<String, List<SubstituteValue>>();
-    
+
     private boolean sendPayload = false;
 
     private boolean needsRepair = false;
@@ -103,11 +101,19 @@ public class ProcessingContext<O> {
     }
 
     public C8YRequest getCurrentRequest() {
-        return requests.get(requests.size()-1);
+        return requests.get(requests.size() - 1);
     }
 
     public void addError(ProcessingException processingException) {
         errors.add(processingException);
+    }
+
+    public void setPayload(P p) {
+        this.payloadWrapper = new GenericProcessingPayload<P>(p);
+    }
+
+    public ProcessingPayload<P> getPayload() {
+        return this.payloadWrapper;
     }
 
 }

@@ -21,9 +21,11 @@
 
 package mqtt.mapping.processor.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 public enum MappingType {
-    JSON ("JSON", String.class),
-    FLAT_FILE ( "FLAT_FILE", String.class),
+    JSON ("JSON", JsonNode.class),
+    FLAT_FILE ( "FLAT_FILE", JsonNode.class),
     GENERIC_BINARY ( "GENERIC_BINARY", byte[].class),
     PROTOBUF_STATIC ( "PROTOBUF_STATIC", byte[].class),
     PROCESSOR_EXTENSION ( "PROCESSOR_EXTENSION", byte[].class);
