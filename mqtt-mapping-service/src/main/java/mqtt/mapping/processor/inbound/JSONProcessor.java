@@ -38,6 +38,7 @@ import mqtt.mapping.model.MappingSubstitution;
 import mqtt.mapping.model.MappingSubstitution.SubstituteValue;
 import mqtt.mapping.model.MappingSubstitution.SubstituteValue.TYPE;
 import mqtt.mapping.processor.ProcessingException;
+import mqtt.mapping.processor.model.GenericProcessingPayload;
 import mqtt.mapping.processor.model.ProcessingContext;
 import mqtt.mapping.processor.model.RepairStrategy;
 import mqtt.mapping.service.MQTTClient;

@@ -58,11 +58,11 @@ import mqtt.mapping.service.MQTTClient;
 @Service
 public class AsynchronousDispatcher implements MqttCallback {
 
-    public static class MappingProcessor<T> implements Callable<List<ProcessingContext<?>>> {
+    public static class MappingProcessor implements Callable<List<ProcessingContext<?>>> {
 
         List<Mapping> resolvedMappings;
         String topic;
-        Map<MappingType, BasePayloadProcessor<T>> payloadProcessorsInbound;
+        Map<MappingType, BasePayloadProcessor<?>> payloadProcessorsInbound;
         boolean sendPayload;
         MqttMessage mqttMessage;
         MappingComponent mappingStatusComponent;
@@ -71,7 +71,7 @@ public class AsynchronousDispatcher implements MqttCallback {
 
         public MappingProcessor(List<Mapping> mappings, MappingComponent mappingStatusComponent, C8YAgent c8yAgent,
                 String topic,
-                Map<MappingType, BasePayloadProcessor<T>> payloadProcessorsInbound, boolean sendPayload,
+                Map<MappingType, BasePayloadProcessor<?>> payloadProcessorsInbound, boolean sendPayload,
                 MqttMessage mqttMessage, ObjectMapper objectMapper) {
             this.resolvedMappings = mappings;
             this.mappingStatusComponent = mappingStatusComponent;
@@ -93,7 +93,7 @@ public class AsynchronousDispatcher implements MqttCallback {
                 if (mapping.isActive()) {
                     MappingStatus mappingStatus = mappingStatusComponent.getMappingStatus(mapping);
 
-                    ProcessingContext<?> context;
+                    ProcessingContext<?,?> context;
                     if (mapping.mappingType.payloadType.equals(String.class)) {
                         context = new ProcessingContext<String>();
                     } else {
@@ -105,7 +105,7 @@ public class AsynchronousDispatcher implements MqttCallback {
                     context.setSendPayload(sendPayload);
                     // identify the corect processor based on the mapping type
                     MappingType mappingType = context.getMappingType();
-                    BasePayloadProcessor processor = payloadProcessorsInbound.get(mappingType);
+                    BasePayloadProcessor<?> processor = payloadProcessorsInbound.get(mappingType);
 
                     if (processor != null) {
                         try {
