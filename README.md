@@ -34,18 +34,29 @@
 
 ## Overview
 
+The Cumulocity Dynamic Mapper addresses the need to get **any** data provided by a  message broker mapped to the Cumulocity IoT Domain model in a zero-code approach.
+It can connect to multiple message brokers likes **MQTT**, **MQTT Connect** and others, subscribes to specific topics and maps the data in a graphical way to the domain model of Cumulocity.
 
-Cumulocity IoT has a MQTT endpoint, but does not yet allow devices to send generic MQTT payloads. This project addresses
-this gap by providing the following artifcats:
+Out of the box the followings connectors are supported
+* **MQTT** - any MQTT Broker
+* **MQTT Connect** - MQTT Broker provided by Cumulocity IoT
 
-* A **Microservice** - exposes REST endpoints, uses the [PAHO MQTT Client](https://github.com/eclipse/paho.mqtt.java) to
-connect to a MQTT broker, a generic Data Mapper & Expression Language  for data mapping and the
+It contains two major components:
+
+* A **Microservice** - exposes REST endpoints, provides a generic connector interface which can be used by broker clients to
+connect to a message broker, a generic data mapper, a comprehensive expression language for data mapping and the
 [Cumulocity Microservice SDK](https://cumulocity.com/guides/microservice-sdk/introduction/) to connect to Cumulocity.
-* A **Frontend Plugin** - uses the exposed endpoints of the microservice to configure a MQTT broker connection & to perform 
-graphical MQTT Data Mappings within the Cumumlocity IoT UI.
 
-Using the solution you are able to connect to any MQTT broker and map any JSON-based payload on any topic dynamically to
+* A **Frontend Plugin** - uses the exposed endpoints of the microservice to configure a MQTT broker connection & to perform 
+graphical data mappings within the Cumumlocity IoT UI.
+
+Using the Cumulocity Dynamic Mapper you are able to connect to almost any message broker and map any payload on any topic dynamically to
 the Cumulocity IoT Domain Model in a graphical way.
+
+<p align="center">
+<img src="resources/image/Generic_MQTT_MappingTemplate.png"  style="width: 100%;" />
+</p>
+<br/>
 
 ### Architecture
 The architecture of the components consists of the following components:
