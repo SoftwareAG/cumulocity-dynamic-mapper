@@ -136,6 +136,12 @@
                 <version>1.5.3</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.cumulocity.client.mqtt</groupId>
+                <artifactId>mqtt-connect-websocket</artifactId>
+                <version>1018.417.0</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 </project>

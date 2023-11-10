@@ -7,9 +7,9 @@ import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 public class MQTTCallback implements MqttCallback {
-    GenericMessageCallback genericMessageCallback;
-    String tenant;
-    String connectorId;
+    private GenericMessageCallback genericMessageCallback;
+    private String tenant;
+    private String connectorId;
 
     MQTTCallback(GenericMessageCallback callback, String tenant, String connectorId) {
         this.genericMessageCallback = callback;
