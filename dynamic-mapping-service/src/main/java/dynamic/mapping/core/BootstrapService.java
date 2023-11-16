@@ -4,11 +4,13 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 
+import com.cumulocity.sdk.client.Platform;
 import dynamic.mapping.configuration.ServiceConfiguration;
 import dynamic.mapping.configuration.ServiceConfigurationComponent;
 import dynamic.mapping.connector.core.client.AConnectorClient;
 import dynamic.mapping.connector.core.registry.ConnectorRegistry;
 import dynamic.mapping.connector.core.registry.ConnectorRegistryException;
+import dynamic.mapping.connector.mqttconnect.MQTTConnectClient;
 import dynamic.mapping.model.MappingServiceRepresentation;
 import dynamic.mapping.processor.PayloadProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +52,9 @@ public class BootstrapService {
     @Autowired
     ConnectorConfigurationComponent connectorConfigurationComponent;
 
+    @Autowired
+    Platform platform;
+
     private ObjectMapper objectMapper;
 
     @Autowired
@@ -67,6 +72,9 @@ public class BootstrapService {
 
     @Value("${APP.additionalSubscriptionIdTest}")
     private String additionalSubscriptionIdTest;
+
+    @Value("${C8Y.baseURL}")
+    private String baseUrl;
 
     @EventListener
     public void destroy(MicroserviceSubscriptionRemovedEvent event) {
@@ -99,6 +107,7 @@ public class BootstrapService {
         mappingComponent.initializeMappingComponent(tenant, mappingServiceRepresentation);
         // TODO Add other clients static property definition here
         connectorRegistry.registerConnector(MQTTClient.getConnectorId(), MQTTClient.getSpec());
+        connectorRegistry.registerConnector(MQTTConnectClient.getConnectorId(), MQTTConnectClient.getSpec());
 
         try {
             if (serviceConfiguration != null) {
@@ -130,6 +139,17 @@ public class BootstrapService {
             mqttClient.submitConnect();
             mqttClient.submitHouskeeping();
             client = mqttClient;
+        }
+        if(MQTTConnectClient.getConnectorId().equals(connectorConfiguration.getConnectorId())) {
+            log.info("Tenant {} - Initializing MQTT Connect Connector with ident {}", tenant, connectorConfiguration.getIdent());
+            MQTTConnectClient mqttConnectClient = new MQTTConnectClient(credentials, tenant, mappingComponent,
+                    connectorConfigurationComponent, connectorConfiguration, c8YAgent, cachedThreadPool, objectMapper,
+                    additionalSubscriptionIdTest, baseUrl, platform);
+            connectorRegistry.registerClient(tenant, mqttConnectClient);
+            mqttConnectClient.submitInitialize();
+            mqttConnectClient.submitConnect();
+            mqttConnectClient.submitHouskeeping();
+            client = mqttConnectClient;
         }
         // Subscriber must be new initialized for the new added connector
         c8YAgent.notificationSubscriberReconnect(tenant);

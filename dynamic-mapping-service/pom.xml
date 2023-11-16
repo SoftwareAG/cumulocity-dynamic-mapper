@@ -116,7 +116,7 @@
 
         <dependency>
             <groupId>com.cumulocity.client.mqtt</groupId>
-            <artifactId>mqtt-connect-websocket</artifactId>
+            <artifactId>mqtt-service-websocket</artifactId>
         </dependency>
 
     </dependencies>
