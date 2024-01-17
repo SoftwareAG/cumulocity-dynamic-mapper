@@ -51,7 +51,7 @@
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
+        <!-- <dependency>
             <groupId>com.softwareag.c8y.mapping</groupId>
             <artifactId>dynamic-mapping-service</artifactId>
             <scope>compile</scope>
@@ -60,7 +60,7 @@
             <groupId>com.softwareag.c8y.mapping</groupId>
             <artifactId>dynamic-mapping-interface</artifactId>
             <scope>compile</scope>
-        </dependency>
+        </dependency> -->
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
