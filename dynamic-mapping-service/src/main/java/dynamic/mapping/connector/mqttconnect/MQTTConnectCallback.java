@@ -12,18 +12,20 @@ public class MQTTConnectCallback implements MqttMessageListener {
     String connectorIdent;
 
     String topic;
-    MQTTConnectCallback(GenericMessageCallback callback, String tenant, String connectorIdent, String topic) {
+    MQTTConnectCallback(GenericMessageCallback callback, String tenant, String connectorIdent) {
         this.genericMessageCallback = callback;
         this.tenant = tenant;
-        this.connectorIdent = connectorIdent;
-        this.topic = topic;
-    }
+        this.connectorIdent = connectorIdent;}
     @Override
     public void onMessage(MqttMessage mqttMessage) {
         ConnectorMessage connectorMessage = new ConnectorMessage();
         connectorMessage.setPayload(mqttMessage.getPayload());
+        connectorMessage.setTenant(tenant);
+        connectorMessage.setSendPayload(true);
+        connectorMessage.setTopic(mqttMessage.getMetadata().getTopic());
+        connectorMessage.setConnectorIdent(connectorIdent);
         try {
-            genericMessageCallback.onMessage(topic ,connectorMessage);
+            genericMessageCallback.onMessage(connectorMessage);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

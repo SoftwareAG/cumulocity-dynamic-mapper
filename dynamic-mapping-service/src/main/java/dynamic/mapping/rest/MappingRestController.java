@@ -164,7 +164,7 @@ public class MappingRestController {
         try {
             connectorConfigurationComponent.saveConnectorConfiguration(configuration);
             ServiceConfiguration serviceConfiguration = serviceConfigurationComponent.getServiceConfiguration(tenant);
-            bootstrapService.initializeConnectorByConfiguration(configuration, serviceConfiguration, tenant);
+            bootstrapService.initializeConnectorByConfiguration(configuration, tenant);
             return ResponseEntity.status(HttpStatus.CREATED).build();
         } catch (Exception ex) {
             log.error("Tenant {} - Error getting mqtt broker configuration {}", tenant, ex);
