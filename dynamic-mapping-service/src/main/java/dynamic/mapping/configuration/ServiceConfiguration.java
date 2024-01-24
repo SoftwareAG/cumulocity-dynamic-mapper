@@ -31,12 +31,17 @@ import lombok.Data;
 import lombok.ToString;
 
 @Data
-@ToString ()
+@ToString()
 @AllArgsConstructor
 public class ServiceConfiguration implements Cloneable {
-    public ServiceConfiguration () {
+    public ServiceConfiguration() {
         this.logPayload = false;
         this.logSubstitution = false;
+        this.logConnectorErrorInBackend = false;
+        this.sendConnectorLifecycle = false;
+        this.sendMappingStatus = false;
+        this.sendSubscriptionEvents = false;
+        this.sendNotificationLifecycle = false;
         this.externalExtensionEnabled = true;
     }
 
@@ -47,6 +52,26 @@ public class ServiceConfiguration implements Cloneable {
     @NotNull
     @JsonSetter(nulls = Nulls.SKIP)
     public boolean logSubstitution;
+
+    @NotNull
+    @JsonSetter(nulls = Nulls.SKIP)
+    public boolean logConnectorErrorInBackend;
+
+    @NotNull
+    @JsonSetter(nulls = Nulls.SKIP)
+    public boolean sendConnectorLifecycle;
+
+    @NotNull
+    @JsonSetter(nulls = Nulls.SKIP)
+    public boolean sendMappingStatus;
+
+    @NotNull
+    @JsonSetter(nulls = Nulls.SKIP)
+    public boolean sendSubscriptionEvents;
+
+    @NotNull
+    @JsonSetter(nulls = Nulls.SKIP)
+    public boolean sendNotificationLifecycle;
 
     @NotNull
     @JsonSetter(nulls = Nulls.SKIP)

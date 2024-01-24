@@ -18,36 +18,23 @@
  *
  * @authors Christof Strack
  */
-import { NgModule } from "@angular/core";
-import { FormsModule, ReactiveFormsModule } from "@angular/forms";
-import { Route } from "@angular/router";
-import { CoreModule, hookNavigator, hookTab } from "@c8y/ngx-components";
-import { BsModalService, ModalModule } from "ngx-bootstrap/modal";
-import { BrokerConfigurationModule } from "./configuration/broker-configuration.module";
-import { ExtensionModule } from "./extension/extension.module";
-import { ExtensionComponent } from "./extension/grid/extension.component";
-import { ExtensionPropertiesComponent } from "./extension/properties/extension-properties.component";
-import { MappingTreeModule } from "./mapping-tree/tree.module";
-import { MappingModule } from "./mapping/mapping.module";
-import { MonitoringModule } from "./monitoring/monitoring.module";
-import { MappingNavigationFactory, MappingTabFactory, OverviewGuard } from "./shared";
-import { TestingModule } from "./testing-devices/testing.module";
-
-const extensionRoutes: Route[] = [
-  {
-    path: "sag-ps-pkg-dynamic-mapping/extensions",
-    component: ExtensionComponent,
-    pathMatch: "full",
-    children: [
-      {
-        path: "properties/:id",
-        component: ExtensionPropertiesComponent,
-      },
-    ],
-    //canActivate: [ExtensionGuard],
-  },
-];
-
+import { NgModule } from '@angular/core';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { CoreModule, hookNavigator, hookTab } from '@c8y/ngx-components';
+import { BsModalService, ModalModule } from 'ngx-bootstrap/modal';
+import { BrokerConfigurationModule } from './configuration/broker-configuration.module';
+import { ExtensionModule } from './extension/extension.module';
+import { MappingTreeModule } from './mapping-tree/tree.module';
+import { MappingModule } from './mapping/mapping.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
+import {
+  MappingNavigationFactory,
+  MappingTabFactory,
+  OverviewGuard,
+  SharedModule,
+} from './shared';
+import { TestingModule } from './testing-devices/testing.module';
+import './shared/styles/shared.css';
 @NgModule({
   imports: [
     CoreModule,
@@ -60,16 +47,16 @@ const extensionRoutes: Route[] = [
     FormsModule,
     ModalModule,
     ReactiveFormsModule,
+    SharedModule
   ],
   exports: [],
-  entryComponents: [],
   declarations: [],
   providers: [
     OverviewGuard,
     BsModalService,
     hookNavigator(MappingNavigationFactory),
-    hookTab(MappingTabFactory),
-  ],
+    hookTab(MappingTabFactory)
+  ]
 })
 export class DynamicMappingModule {
   constructor() {}

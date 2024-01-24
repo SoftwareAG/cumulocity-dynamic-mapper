@@ -19,16 +19,15 @@
  * @authors Christof Strack
  */
 
-import { NgModule } from "@angular/core";
-import { CoreModule, hookRoute } from "@c8y/ngx-components";
-import { AddExtensionComponent } from "./extension-modal/add-extension.component";
-import { ExtensionCardComponent } from "./extension-card/extension-card.component";
-import { ExtensionComponent } from "./grid/extension.component";
-import { BsDropdownModule } from "ngx-bootstrap/dropdown";
-import { CollapseModule } from "ngx-bootstrap/collapse";
-import { ExtensionPropertiesComponent } from "./properties/extension-properties.component";
-import { AdminGuard } from "../shared/admin.guard";
-
+import { NgModule } from '@angular/core';
+import { CoreModule, hookRoute } from '@c8y/ngx-components';
+import { CollapseModule } from 'ngx-bootstrap/collapse';
+import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
+import { AdminGuard, SharedModule } from '../shared';
+import { ExtensionCardComponent } from './extension-card/extension-card.component';
+import { AddExtensionComponent } from './extension-modal/add-extension.component';
+import { ExtensionComponent } from './grid/extension.component';
+import { ExtensionPropertiesComponent } from './properties/extension-properties.component';
 
 @NgModule({
   declarations: [
@@ -36,32 +35,26 @@ import { AdminGuard } from "../shared/admin.guard";
     ExtensionCardComponent,
     AddExtensionComponent,
     ExtensionCardComponent,
-    ExtensionPropertiesComponent,
+    ExtensionPropertiesComponent
   ],
-  imports: [CoreModule, BsDropdownModule.forRoot(), CollapseModule.forRoot()],
-  entryComponents: [
-    AddExtensionComponent,
-    ExtensionComponent,
-    ExtensionCardComponent,
-    ExtensionPropertiesComponent,
-  ],
+  imports: [CoreModule, BsDropdownModule.forRoot(), CollapseModule.forRoot(), SharedModule],
   exports: [],
   providers: [
     hookRoute({
-      path: "sag-ps-pkg-dynamic-mapping/extensions",
+      path: 'sag-ps-pkg-dynamic-mapping/extensions',
       children: [
         {
-          path: "",
-          pathMatch: "full",
+          path: '',
+          pathMatch: 'full',
           component: ExtensionComponent,
-          canActivate: [AdminGuard],
+          canActivate: [AdminGuard]
         },
         {
-          path: "properties/:id",
-          component: ExtensionPropertiesComponent,
-        },
-      ],
-    }),
-  ],
+          path: 'properties/:id',
+          component: ExtensionPropertiesComponent
+        }
+      ]
+    })
+  ]
 })
 export class ExtensionModule {}

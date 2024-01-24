@@ -21,40 +21,13 @@
 
 package dynamic.mapping.core;
 
-import java.io.Serializable;
-
-import javax.validation.constraints.NotNull;
-
-import lombok.Data;
-
-@Data
-// @NoArgsConstructor
-// @AllArgsConstructor
-public class ConnectorStatus implements Serializable {
-    @NotNull
-    public Status status;
-
-    public ConnectorStatus(Status status) {
-        this.status = status;
-    }
-
-    public ConnectorStatus() {
-        this.status = Status.NOT_READY;
-    }
-
-    public static ConnectorStatus connected() {
-        return new ConnectorStatus(Status.CONNECTED);
-    }
-
-    public static ConnectorStatus enabled() {
-        return new ConnectorStatus(Status.ENABLED);
-    }
-
-    public static ConnectorStatus configured() {
-        return new ConnectorStatus(Status.CONFIGURED);
-    }
-
-    public static ConnectorStatus notReady() {
-        return new ConnectorStatus(Status.NOT_READY);
-    }
+public enum ConnectorStatus {
+    UNKNOWN,
+    CONFIGURED,
+    ENABLED,
+    CONNECTING,
+    CONNECTED,
+    DISCONNECTED,
+    DISCONNECTING,
+    FAILED,
 }

@@ -18,28 +18,25 @@
  *
  * @authors Christof Strack
  */
-import { Injectable } from "@angular/core";
-import * as _ from "lodash";
-import {
-  API,
-  Mapping,
-  RepairStrategy,
-  TIME,
-  TOKEN_TOPIC_LEVEL,
-  isNumeric,
-  splitTopicExcludingSeparator,
-  whatIsIt,
-} from "../../../shared";
-import { PayloadProcessorInbound } from "../payload-processor-inbound.service";
+import { Injectable } from '@angular/core';
+import * as _ from 'lodash';
+import { API, Mapping, RepairStrategy, whatIsIt } from '../../../shared';
+import { PayloadProcessorInbound } from '../payload-processor-inbound.service';
 import {
   ProcessingContext,
   SubstituteValue,
-  SubstituteValueType,
-} from "../prosessor.model";
+  SubstituteValueType
+} from '../prosessor.model';
+import {
+  TIME,
+  TOKEN_TOPIC_LEVEL,
+  isNumeric,
+  splitTopicExcludingSeparator
+} from '../../shared/util';
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class JSONProcessorInbound extends PayloadProcessorInbound {
-  public deserializePayload(
+  deserializePayload(
     context: ProcessingContext,
     mapping: Mapping
   ): ProcessingContext {
@@ -47,15 +44,14 @@ export class JSONProcessorInbound extends PayloadProcessorInbound {
     return context;
   }
 
-  public async extractFromSource(context: ProcessingContext) {
-    let mapping: Mapping = context.mapping;
-    let payloadJsonNode: JSON = context.payload;
-    let postProcessingCache: Map<string, SubstituteValue[]> =
-      context.postProcessingCache;
-    let topicLevels = splitTopicExcludingSeparator(context.topic);
+  async extractFromSource(context: ProcessingContext) {
+    const { mapping } = context;
+    const payloadJsonNode: JSON = context.payload;
+    const { postProcessingCache } = context;
+    const topicLevels = splitTopicExcludingSeparator(context.topic);
     payloadJsonNode[TOKEN_TOPIC_LEVEL] = topicLevels;
 
-    let payload: string = JSON.stringify(payloadJsonNode, null, 4);
+    const payload: string = JSON.stringify(payloadJsonNode, null, 4);
     let substitutionTimeExists: boolean = false;
 
     // iterate over substitutions BEGIN
@@ -69,22 +65,22 @@ export class JSONProcessorInbound extends PayloadProcessorInbound {
           substitution.pathSource
         );
 
-        //step 2 analyse exctracted content: textual, array
-        let postProcessingCacheEntry: SubstituteValue[] = _.get(
+        // step 2 analyse exctracted content: textual, array
+        const postProcessingCacheEntry: SubstituteValue[] = _.get(
           postProcessingCache,
           substitution.pathTarget,
           []
         );
         if (extractedSourceContent == undefined) {
           console.error(
-            "No substitution for: ",
+            'No substitution for: ',
             substitution.pathSource,
             payload
           );
           postProcessingCacheEntry.push({
             value: extractedSourceContent,
             type: SubstituteValueType.IGNORE,
-            repairStrategy: substitution.repairStrategy,
+            repairStrategy: substitution.repairStrategy
           });
           postProcessingCache.set(
             substitution.pathTarget,
@@ -100,25 +96,25 @@ export class JSONProcessorInbound extends PayloadProcessorInbound {
                   postProcessingCacheEntry.push({
                     value: jn.toString(),
                     type: SubstituteValueType.NUMBER,
-                    repairStrategy: substitution.repairStrategy,
+                    repairStrategy: substitution.repairStrategy
                   });
-                } else if (whatIsIt(jn) == "String") {
+                } else if (whatIsIt(jn) == 'String') {
                   postProcessingCacheEntry.push({
                     value: jn,
                     type: SubstituteValueType.TEXTUAL,
-                    repairStrategy: substitution.repairStrategy,
+                    repairStrategy: substitution.repairStrategy
                   });
-                } else if (whatIsIt(jn) == "Array") {
+                } else if (whatIsIt(jn) == 'Array') {
                   postProcessingCacheEntry.push({
                     value: jn,
                     type: SubstituteValueType.ARRAY,
-                    repairStrategy: substitution.repairStrategy,
+                    repairStrategy: substitution.repairStrategy
                   });
-                } else if (whatIsIt(jn) == "Object") {
+                } else if (whatIsIt(jn) == 'Object') {
                   postProcessingCacheEntry.push({
                     value: jn,
                     type: SubstituteValueType.OBJECT,
-                    repairStrategy: substitution.repairStrategy,
+                    repairStrategy: substitution.repairStrategy
                   });
                 } else {
                   console.warn(
@@ -140,7 +136,7 @@ export class JSONProcessorInbound extends PayloadProcessorInbound {
               postProcessingCacheEntry.push({
                 value: extractedSourceContent,
                 type: SubstituteValueType.ARRAY,
-                repairStrategy: substitution.repairStrategy,
+                repairStrategy: substitution.repairStrategy
               });
               postProcessingCache.set(
                 substitution.pathTarget,
@@ -152,18 +148,18 @@ export class JSONProcessorInbound extends PayloadProcessorInbound {
             postProcessingCacheEntry.push({
               value: extractedSourceContent,
               type: SubstituteValueType.NUMBER,
-              repairStrategy: substitution.repairStrategy,
+              repairStrategy: substitution.repairStrategy
             });
             postProcessingCache.set(
               substitution.pathTarget,
               postProcessingCacheEntry
             );
-          } else if (whatIsIt(extractedSourceContent) == "String") {
+          } else if (whatIsIt(extractedSourceContent) == 'String') {
             context.cardinality.set(substitution.pathTarget, 1);
             postProcessingCacheEntry.push({
               value: extractedSourceContent,
               type: SubstituteValueType.TEXTUAL,
-              repairStrategy: substitution.repairStrategy,
+              repairStrategy: substitution.repairStrategy
             });
             postProcessingCache.set(
               substitution.pathTarget,
@@ -177,7 +173,7 @@ export class JSONProcessorInbound extends PayloadProcessorInbound {
             postProcessingCacheEntry.push({
               value: extractedSourceContent,
               type: SubstituteValueType.OBJECT,
-              repairStrategy: substitution.repairStrategy,
+              repairStrategy: substitution.repairStrategy
             });
             postProcessingCache.set(
               substitution.pathTarget,
@@ -200,7 +196,7 @@ export class JSONProcessorInbound extends PayloadProcessorInbound {
 
     // no substitution for the time property exists, then use the system time
     if (!substitutionTimeExists && mapping.targetAPI != API.INVENTORY.name) {
-      let postProcessingCacheEntry: SubstituteValue[] = _.get(
+      const postProcessingCacheEntry: SubstituteValue[] = _.get(
         postProcessingCache,
         TIME,
         []
@@ -208,7 +204,7 @@ export class JSONProcessorInbound extends PayloadProcessorInbound {
       postProcessingCacheEntry.push({
         value: new Date().toISOString(),
         type: SubstituteValueType.TEXTUAL,
-        repairStrategy: RepairStrategy.DEFAULT,
+        repairStrategy: RepairStrategy.DEFAULT
       });
 
       postProcessingCache.set(TIME, postProcessingCacheEntry);

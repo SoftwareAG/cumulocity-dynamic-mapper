@@ -1,20 +1,20 @@
-import { Component, Input, OnInit, Output } from "@angular/core";
-import { ModalLabels } from "@c8y/ngx-components";
-import { Subject } from "rxjs";
-import { FormlyFieldConfig } from "@ngx-formly/core";
-import { FormGroup } from "@angular/forms";
+import { Component, Input, OnInit, Output } from '@angular/core';
+import { ModalLabels } from '@c8y/ngx-components';
+import { Subject } from 'rxjs';
+import { FormlyFieldConfig } from '@ngx-formly/core';
+import { FormGroup } from '@angular/forms';
 import {
   ConnectorConfiguration,
-  ConnectorProperty,
-  ConnectorPropertyConfiguration,
-} from "../../shared";
+  ConnectorSpecification,
+  ConnectorPropertyType
+} from '../shared/configuration.model';
 
 @Component({
-  selector: "d11y-edit-connector-modal",
+  selector: 'd11r-edit-connector-modal',
   template: ` <c8y-modal
     title="Edit properties broker configuration"
-    (onClose)="onSave($event)"
-    (onDismiss)="onDismiss($event)"
+    (onClose)="onSave()"
+    (onDismiss)="onDismiss()"
     [labels]="labels"
     [headerClasses]="'modal-header dialog-header'"
   >
@@ -34,147 +34,167 @@ import {
         ></formly-form>
       </div>
     </div>
-  </c8y-modal>`,
+  </c8y-modal>`
 })
 export class EditConfigurationComponent implements OnInit {
-  @Output() closeSubject: Subject<any> = new Subject();
   @Input() add: boolean;
   @Input() configuration: Partial<ConnectorConfiguration>;
-  @Input() specifications: ConnectorPropertyConfiguration[];
+  @Input() specifications: ConnectorSpecification[];
+  @Output() closeSubject: Subject<any> = new Subject();
   brokerFormlyFields: FormlyFieldConfig[] = [];
   brokerFormly: FormGroup = new FormGroup({});
   dynamicFormlyFields: FormlyFieldConfig[] = [];
   dynamicFormly: FormGroup = new FormGroup({});
-  labels: ModalLabels = { ok: "Save", cancel: "Dismiss" };
+  labels: ModalLabels = { ok: 'Save', cancel: 'Dismiss' };
 
   ngOnInit(): void {
     this.brokerFormlyFields = [
       {
-        className: "col-lg-12",
-        key: "connectorId",
-        type: "select",
-        wrappers: ["c8y-form-field"],
+        className: 'col-lg-12',
+        key: 'connectorType',
+        type: 'select',
+        wrappers: ['c8y-form-field'],
         templateOptions: {
-          label: "Connector Id",
+          label: 'Connector Id',
           options: this.specifications.map((sp) => {
             return {
-              label: sp.connectorId,
-              value: sp.connectorId,
+              label: sp.connectorType,
+              value: sp.connectorType
             };
           }),
-          change: (field: FormlyFieldConfig, event?: any) => {
-            this.createDynamicForm(this.brokerFormly.get("connectorId").value);
+          change: () => {
+            this.createDynamicForm(
+              this.brokerFormly.get('connectorType').value
+            );
           },
-          required: true,
-        },
-      },
+          required: true
+        }
+      }
     ];
     if (!this.add) {
-      this.createDynamicForm(this.configuration.connectorId);
+      this.createDynamicForm(this.configuration.connectorType);
     }
   }
 
-  onDismiss(event) {
-    console.log("Dismiss");
+  onDismiss() {
+    console.log('Dismiss');
     this.closeSubject.next(undefined);
   }
 
-  onSave(event) {
-    console.log("Save");
+  onSave() {
+    console.log('Save');
     this.closeSubject.next(this.configuration);
   }
 
-  private async createDynamicForm(connectorId: string): Promise<void> {
-    const dynamicFields: ConnectorPropertyConfiguration =
-      this.specifications.find((c) => c.connectorId == connectorId);
+  private async createDynamicForm(connectorType: string): Promise<void> {
+    const dynamicFields: ConnectorSpecification = this.specifications.find(
+      (c) => c.connectorType == connectorType
+    );
 
-    this.configuration.connectorId = connectorId;
+    this.configuration.connectorType = connectorType;
 
     this.dynamicFormlyFields.push({
       fieldGroup: [
         {
-          className: "col-lg-12",
-          key: "name",
-          type: "input",
-          wrappers: ["c8y-form-field"],
+          className: 'col-lg-12',
+          key: 'name',
+          type: 'input',
+          wrappers: ['c8y-form-field'],
           templateOptions: {
-            label: "Name",
-            required: true,
-          },
-        },
-      ],
+            label: 'Name',
+            required: true
+          }
+        }
+      ]
     });
     if (dynamicFields) {
+      const numberFields = Object.keys(dynamicFields.properties).length;
+      const sortedFields = new Array(numberFields);
       for (const key in dynamicFields.properties) {
         const property = dynamicFields.properties[key];
-        if (property.property == ConnectorProperty.NUMERIC_PROPERTY) {
-          this.dynamicFormlyFields.push({
-            // fieldGroupClassName: "row",
-            fieldGroup: [
-              {
-                className: "col-lg-12",
-                key: `properties.${key}`,
-                type: "input",
-                wrappers: ["c8y-form-field"],
-                templateOptions: {
-                  type: "number",
-                  label: key,
-                  required: property.required,
-                },
-              },
-            ],
-          });
-        } else if (property.property == ConnectorProperty.STRING_PROPERTY) {
-          this.dynamicFormlyFields.push({
-            // fieldGroupClassName: "row",
-            fieldGroup: [
-              {
-                className: "col-lg-12",
-                key: `properties.${key}`,
-                type: "input",
-                wrappers: ["c8y-form-field"],
-                templateOptions: {
-                  label: key,
-                  required: property.required,
-                },
-              },
-            ],
-          });
-        } else if (
-          property.property == ConnectorProperty.SENSITIVE_STRING_PROPERTY
-        ) {
-          this.dynamicFormlyFields.push({
-            // fieldGroupClassName: "row",
-            fieldGroup: [
-              {
-                className: "col-lg-12",
-                key: `properties.${key}`,
-                type: "input",
-                wrappers: ["c8y-form-field"],
-                templateOptions: {
-                  type: "password",
-                  label: key,
-                  required: property.required,
-                },
-              },
-            ],
-          });
-        } else if (property.property == ConnectorProperty.BOOLEAN_PROPERTY) {
-          this.dynamicFormlyFields.push({
-            //fieldGroupClassName: "row",
-            fieldGroup: [
-              {
-                className: "col-lg-12",
-                key: `properties.${key}`,
-                type: "switch",
-                wrappers: ["c8y-form-field"],
-                templateOptions: {
-                  label: key,
-                  required: property.required,
-                },
-              },
-            ],
-          });
+        if (property.order < numberFields && property.order >= 0) {
+          if (!sortedFields[property.order]) {
+            sortedFields[property.order] = { key: key, property: property };
+          } else {
+            // append property to the end of the list
+            sortedFields.push({ key: key, property: property });
+          }
+        }
+      }
+      for (let index = 0; index < sortedFields.length; index++) {
+        const entry = sortedFields[index];
+        // test if the property is a valid entry, this happens when the list of properties is not numbered consecutivly
+        if (entry) {
+          const { property } = entry;
+          if (property.type == ConnectorPropertyType.NUMERIC_PROPERTY) {
+            this.dynamicFormlyFields.push({
+              // fieldGroupClassName: "row",
+              fieldGroup: [
+                {
+                  className: 'col-lg-12',
+                  key: `properties.${entry.key}`,
+                  type: 'input',
+                  wrappers: ['c8y-form-field'],
+                  templateOptions: {
+                    type: 'number',
+                    label: entry.key,
+                    required: property.required
+                  }
+                }
+              ]
+            });
+          } else if (property.type == ConnectorPropertyType.STRING_PROPERTY) {
+            this.dynamicFormlyFields.push({
+              // fieldGroupClassName: "row",
+              fieldGroup: [
+                {
+                  className: 'col-lg-12',
+                  key: `properties.${entry.key}`,
+                  type: 'input',
+                  wrappers: ['c8y-form-field'],
+                  templateOptions: {
+                    label: entry.key,
+                    required: property.required
+                  }
+                }
+              ]
+            });
+          } else if (
+            property.type == ConnectorPropertyType.SENSITIVE_STRING_PROPERTY
+          ) {
+            this.dynamicFormlyFields.push({
+              // fieldGroupClassName: "row",
+              fieldGroup: [
+                {
+                  className: 'col-lg-12',
+                  key: `properties.${entry.key}`,
+                  type: 'input',
+                  wrappers: ['c8y-form-field'],
+                  templateOptions: {
+                    type: 'password',
+                    label: entry.key,
+                    required: property.required
+                  }
+                }
+              ]
+            });
+          } else if (property.type == ConnectorPropertyType.BOOLEAN_PROPERTY) {
+            this.dynamicFormlyFields.push({
+              // fieldGroupClassName: "row",
+              fieldGroup: [
+                {
+                  className: 'col-lg-12',
+                  key: `properties.${entry.key}`,
+                  type: 'switch',
+                  wrappers: ['c8y-form-field'],
+                  templateOptions: {
+                    label: entry.key,
+                    required: property.required
+                  }
+                }
+              ]
+            });
+          }
         }
       }
       this.dynamicFormlyFields = [...this.dynamicFormlyFields];

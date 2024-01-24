@@ -21,7 +21,6 @@
 
 package dynamic.mapping.processor.outbound;
 
-import com.cumulocity.rest.representation.AbstractExtensibleRepresentation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.jayway.jsonpath.DocumentContext;
@@ -31,6 +30,7 @@ import dynamic.mapping.model.MappingSubstitution;
 import lombok.extern.slf4j.Slf4j;
 import dynamic.mapping.connector.core.client.AConnectorClient;
 import dynamic.mapping.core.C8YAgent;
+import dynamic.mapping.core.ConfigurationRegistry;
 import dynamic.mapping.model.API;
 import dynamic.mapping.processor.C8YMessage;
 import dynamic.mapping.processor.ProcessingException;
@@ -48,14 +48,12 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-//@Service
 public abstract class BasePayloadProcessorOutbound<T> {
 
-    public BasePayloadProcessorOutbound(ObjectMapper objectMapper, AConnectorClient connectorClient, C8YAgent c8yAgent, String tenant) {
-        this.objectMapper = objectMapper;
+    public BasePayloadProcessorOutbound(ConfigurationRegistry configurationRegistry, AConnectorClient connectorClient) {
+        this.objectMapper = configurationRegistry.getObjectMapper();
         this.connectorClient = connectorClient;
-        this.c8yAgent = c8yAgent;
-        this.tenant = tenant;
+        this.c8yAgent = configurationRegistry.getC8yAgent();
     }
 
     protected C8YAgent c8yAgent;
@@ -63,8 +61,6 @@ public abstract class BasePayloadProcessorOutbound<T> {
     protected ObjectMapper objectMapper;
 
     protected AConnectorClient connectorClient;
-
-    protected String tenant;
 
     public static String TOKEN_DEVICE_TOPIC = "_DEVICE_IDENT_";
     public static String TOKEN_TOPIC_LEVEL = "_TOPIC_LEVEL_";
@@ -79,6 +75,7 @@ public abstract class BasePayloadProcessorOutbound<T> {
          * step 3 replace target with extract content from outbound payload
          */
         Mapping mapping = context.getMapping();
+        String tenant = context.getTenant();
 
         // if there are to little device idenfified then we replicate the first device
         Map<String, List<MappingSubstitution.SubstituteValue>> postProcessingCache = context.getPostProcessingCache();
@@ -96,7 +93,8 @@ public abstract class BasePayloadProcessorOutbound<T> {
         String deviceSource = "undefined";
 
         for (String pathTarget : pathTargets) {
-            MappingSubstitution.SubstituteValue substituteValue = new MappingSubstitution.SubstituteValue(new TextNode("NOT_DEFINED"), MappingSubstitution.SubstituteValue.TYPE.TEXTUAL,
+            MappingSubstitution.SubstituteValue substituteValue = new MappingSubstitution.SubstituteValue(
+                    new TextNode("NOT_DEFINED"), MappingSubstitution.SubstituteValue.TYPE.TEXTUAL,
                     RepairStrategy.DEFAULT);
             if (postProcessingCache.get(pathTarget).size() > 0) {
                 substituteValue = postProcessingCache.get(pathTarget).get(0).clone();
@@ -129,7 +127,6 @@ public abstract class BasePayloadProcessorOutbound<T> {
             } else {
                 context.setResolvedPublishTopic(context.getMapping().getPublishTopic());
             }
-            AbstractExtensibleRepresentation attocRequest = null;
             // remove TOPIC_LEVEL
             payloadTarget.delete(Mapping.TOKEN_TOPIC_LEVEL);
             var newPredecessor = context.addRequest(
@@ -137,40 +134,48 @@ public abstract class BasePayloadProcessorOutbound<T> {
                             payloadTarget.jsonString(),
                             null, mapping.targetAPI, null));
             try {
-                connectorClient.publishMEAO(context);
-                //var response = objectMapper.writeValueAsString(attocRequest);
-                //context.getCurrentRequest().setResponse(response);
+                if (connectorClient.isConnected() && context.isSendPayload()) {
+                    connectorClient.publishMEAO(context);
+                } else {
+                    log.warn("Tenant {} - Not sending message : connected {}, sendPayload {}", tenant, connectorClient.isConnected(), context.isSendPayload());
+                }
+                // var response = objectMapper.writeValueAsString(attocRequest);
+                // context.getCurrentRequest().setResponse(response);
             } catch (Exception e) {
                 context.getCurrentRequest().setError(e);
+                log.error("Tenant {} - Error during publishing outbound message: {}", tenant, e);
             }
             predecessor = newPredecessor;
         } else {
-            log.warn("Ignoring payload: {}, {}, {}", payloadTarget, mapping.targetAPI,
+            log.warn("Tenant {} - Ignoring payload: {}, {}, {}", tenant, payloadTarget, mapping.targetAPI,
                     postProcessingCache.size());
         }
-        log.debug("Added payload for sending: {}, {}, numberDevices: {}", payloadTarget, mapping.targetAPI,
+        log.debug("Tenant {} - Added payload for sending: {}, {}, numberDevices: {}", tenant, payloadTarget,
+                mapping.targetAPI,
                 1);
-
         return context;
-
     }
 
-    public void substituteValueInObject(MappingType type, MappingSubstitution.SubstituteValue sub, DocumentContext jsonObject, String keys)
+    public void substituteValueInObject(MappingType type, MappingSubstitution.SubstituteValue sub,
+            DocumentContext jsonObject, String keys)
             throws JSONException {
         boolean subValueMissing = sub.value == null;
-        boolean subValueNull =  (sub.value == null) || ( sub.value != null && sub.value.isNull());
-        // variant where the default strategy for PROCESSOR_EXTENSION is REMOVE_IF_MISSING
-        // if ((sub.repairStrategy.equals(RepairStrategy.REMOVE_IF_MISSING) && subValueMissing) ||
+        boolean subValueNull = (sub.value == null) || (sub.value != null && sub.value.isNull());
+        // variant where the default strategy for PROCESSOR_EXTENSION is
+        // REMOVE_IF_MISSING
+        // if ((sub.repairStrategy.equals(RepairStrategy.REMOVE_IF_MISSING) &&
+        // subValueMissing) ||
         // (sub.repairStrategy.equals(RepairStrategy.REMOVE_IF_NULL) && subValueNull) ||
-        // ((type.equals(MappingType.PROCESSOR_EXTENSION) || type.equals(MappingType.PROTOBUF_STATIC))
-        //         && (subValueMissing || subValueNull)))
+        // ((type.equals(MappingType.PROCESSOR_EXTENSION) ||
+        // type.equals(MappingType.PROTOBUF_STATIC))
+        // && (subValueMissing || subValueNull)))
         if ((sub.repairStrategy.equals(RepairStrategy.REMOVE_IF_MISSING) && subValueMissing) ||
                 (sub.repairStrategy.equals(RepairStrategy.REMOVE_IF_NULL) && subValueNull)) {
             jsonObject.delete(keys);
-        } else if (sub.repairStrategy.equals(RepairStrategy.CREATE_IF_MISSING) ) {
-            boolean pathIsNested =  keys.contains(".") ||  keys.contains("[") ;
+        } else if (sub.repairStrategy.equals(RepairStrategy.CREATE_IF_MISSING)) {
+            boolean pathIsNested = keys.contains(".") || keys.contains("[");
             if (pathIsNested) {
-                throw new JSONException ("Can only crrate new nodes ion the root level!");
+                throw new JSONException("Can only crrate new nodes ion the root level!");
             }
             jsonObject.put("$", keys, sub.typedValue());
         } else {

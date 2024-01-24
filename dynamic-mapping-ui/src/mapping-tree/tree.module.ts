@@ -18,22 +18,20 @@
  *
  * @authors Christof Strack
  */
-import { NgModule } from "@angular/core";
-import { CoreModule, hookRoute } from "@c8y/ngx-components";
-import { MappingTreeComponent } from "./tree.component";
-import { SharedModule } from "../shared/shared.module";
+import { NgModule } from '@angular/core';
+import { CoreModule, hookRoute } from '@c8y/ngx-components';
+import { MappingTreeComponent } from './tree.component';
+import { SharedModule } from '../shared';
 
 @NgModule({
   declarations: [MappingTreeComponent],
   imports: [CoreModule, SharedModule],
-  entryComponents: [MappingTreeComponent],
   exports: [],
   providers: [
-
-      hookRoute({
-          path: "sag-ps-pkg-dynamic-mapping/tree",
-          component: MappingTreeComponent,
-        }),
-  ],
+    hookRoute({
+      path: 'sag-ps-pkg-dynamic-mapping/tree',
+      component: MappingTreeComponent
+    })
+  ]
 })
 export class MappingTreeModule {}
