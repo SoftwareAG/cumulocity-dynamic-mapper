@@ -7,16 +7,11 @@ import com.cumulocity.mqtt.service.client.MqttPublisher;
 import com.cumulocity.mqtt.service.client.MqttSubscriber;
 import com.cumulocity.mqtt.service.client.model.MqttMessage;
 import com.cumulocity.sdk.client.Platform;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dynamic.mapping.configuration.ConnectorConfiguration;
-import dynamic.mapping.configuration.ConnectorConfigurationComponent;
 import dynamic.mapping.connector.core.ConnectorProperty;
-import dynamic.mapping.connector.core.ConnectorPropertyType;
 import dynamic.mapping.connector.core.ConnectorSpecification;
 import dynamic.mapping.connector.core.client.AConnectorClient;
-import dynamic.mapping.connector.mqtt.MQTTClient;
-import dynamic.mapping.core.C8YAgent;
-import dynamic.mapping.core.MappingComponent;
+import dynamic.mapping.core.ConfigurationRegistry;
 import dynamic.mapping.processor.inbound.AsynchronousDispatcherInbound;
 import dynamic.mapping.processor.model.C8YRequest;
 import dynamic.mapping.processor.model.ProcessingContext;
@@ -24,11 +19,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.MqttException;
 
-import org.joda.time.DateTime;
-
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 @Slf4j
 public class MQTTConnectClient extends AConnectorClient {
 
@@ -37,15 +29,17 @@ public class MQTTConnectClient extends AConnectorClient {
     private Credentials credentials = null;
 
     @Getter
-    private static final String connectorId = "MQTTConnect";
+    private static final String connectorType = "MQTTConnect";
 
     private String connectorIdent = null;
+
+    private String connectorName = null;
 
     @Getter
     public static ConnectorSpecification spec;
     static {
         Map<String, ConnectorProperty> configProps = new HashMap<>();
-        spec = new ConnectorSpecification(connectorId, false, configProps);
+        spec = new ConnectorSpecification(connectorType, false, configProps);
     }
 
     private String additionalSubscriptionIdTest;
@@ -60,21 +54,20 @@ public class MQTTConnectClient extends AConnectorClient {
 
     private Map<String, MqttSubscriber> subscribers = new HashMap<>();
 
-    public MQTTConnectClient(Credentials credentials, String tenant, MappingComponent mappingComponent,
-                             ConnectorConfigurationComponent connectorConfigurationComponent,
-                             ConnectorConfiguration connectorConfiguration, C8YAgent c8YAgent, ExecutorService cachedThreadPool,
-                             ObjectMapper objectMapper, String additionalSubscriptionIdTest, String baseUrl, Platform platform) {
+    public MQTTConnectClient(ConfigurationRegistry configurationRegistry,
+                             ConnectorConfiguration connectorConfiguration, String additionalSubscriptionIdTest, String tenant, String baseUrl, Platform platform) {
         // setConfigProperties();
         this.credentials = credentials;
         this.tenant = tenant;
-        this.mappingComponent = mappingComponent;
-        this.connectorConfigurationComponent = connectorConfigurationComponent;
+        this.mappingComponent = configurationRegistry.getMappingComponent();
+        this.connectorConfigurationComponent = configurationRegistry.getConnectorConfigurationComponent();
         this.configuration = connectorConfiguration;
         // ensure the client knows its identity even if configuration is set to null
         this.connectorIdent = connectorConfiguration.ident;
-        this.c8yAgent = c8YAgent;
-        this.cachedThreadPool = cachedThreadPool;
-        this.objectMapper = objectMapper;
+        this.connectorName = connectorConfiguration.name;
+        this.c8yAgent = configurationRegistry.getC8yAgent();
+        this.cachedThreadPool = configurationRegistry.getCachedThreadPool();
+        this.objectMapper = configurationRegistry.getObjectMapper();
         this.additionalSubscriptionIdTest = additionalSubscriptionIdTest;
         this.baseUrl = baseUrl;
         this.platform = platform;
@@ -114,19 +107,6 @@ public class MQTTConnectClient extends AConnectorClient {
     }
 
     @Override
-    public boolean canConnect() {
-        if (configuration == null)
-            return false;
-        return configuration.isEnabled();
-    }
-
-    @Override
-    public boolean shouldConnect() {
-        //We don't have any configuration yet so always return true when enabled
-        return canConnect();
-    }
-
-    @Override
     public boolean isConnected() {
         //When we have at least an active subscription this is considered to be connected
         if(subscribers.keySet().isEmpty())
@@ -151,16 +131,19 @@ public class MQTTConnectClient extends AConnectorClient {
     }
 
     @Override
+    public String getConnectorName() {
+        return connectorName;
+    }
+
+    @Override
     public void subscribe(String topic, Integer qos) throws MqttException {
         //FIXME We need for each topic an own subscriber ... this is bad practice and should be change in the MQTT Connect Client.
         log.debug("Subscribing on topic: {}", topic);
-        c8yAgent.createEvent("Subscribing on topic " + topic, STATUS_MAPPING_EVENT_TYPE, DateTime.now(), null, tenant);
         MqttSubscriber subscriber = mqttConnectClient.buildSubscriber(MqttConfig.webSocket().subscriber(getSubscriberId(topic)).topic(topic).build());
         subscribers.put(getSubscriberId(topic), subscriber);
         if (dispatcher == null)
-            this.dispatcher = new AsynchronousDispatcherInbound(this, c8yAgent, objectMapper, cachedThreadPool,
-                    mappingComponent);
-        MQTTConnectCallback callback = new MQTTConnectCallback(dispatcher, tenant, this.getConnectorId(), topic);
+            this.dispatcher = new AsynchronousDispatcherInbound(configurationRegistry, this);
+        MQTTConnectCallback callback = new MQTTConnectCallback(dispatcher, tenant, this.getConnectorIdent());
         subscriber.subscribe(callback);
         log.debug("Successfully subscribed on topic: {}", topic);
     }

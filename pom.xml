@@ -150,7 +150,7 @@
             <dependency>
                 <groupId>com.cumulocity.client.mqtt</groupId>
                 <artifactId>mqtt-service-websocket</artifactId>
-                <version>1018.521.0</version>
+                <version>1020.73.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

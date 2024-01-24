@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 
+import com.cumulocity.microservice.context.credentials.MicroserviceCredentials;
 import com.cumulocity.sdk.client.Platform;
 import dynamic.mapping.configuration.ServiceConfiguration;
 import dynamic.mapping.configuration.ServiceConfigurationComponent;
@@ -58,13 +59,6 @@ public class BootstrapService {
     @Autowired
     Platform platform;
 
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    public void setObjectMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
-
     @Qualifier("cachedThreadPool")
     private ExecutorService cachedThreadPool;
 
@@ -106,6 +100,7 @@ public class BootstrapService {
     public void initialize(MicroserviceSubscriptionAddedEvent event) {
         // Executed for each tenant subscribed
         String tenant = event.getCredentials().getTenant();
+        MicroserviceCredentials credentials = event.getCredentials();
         log.info("Tenant {} - Microservice subscribed", tenant);
         TimeZone.setDefault(TimeZone.getTimeZone("Europe/Berlin"));
         ManagedObjectRepresentation mappingServiceMOR = configurationRegistry.getC8yAgent()
@@ -123,10 +118,11 @@ public class BootstrapService {
         mappingComponent.initializeMappingStatus(tenant, false);
         mappingComponent.initializeMappingCaches(tenant);
 
+
+
         // TODO Add other clients static property definition here
         connectorRegistry.registerConnector(MQTTClient.getConnectorType(), MQTTClient.getSpec());
-        connectorRegistry.registerConnector(MQTTClient.getConnectorId(), MQTTClient.getSpec());
-        connectorRegistry.registerConnector(MQTTConnectClient.getConnectorId(), MQTTConnectClient.getSpec());
+        connectorRegistry.registerConnector(MQTTConnectClient.getConnectorType(), MQTTConnectClient.getSpec());
 
         try {
             if (serviceConfiguration != null) {
@@ -134,8 +130,7 @@ public class BootstrapService {
                         .getConnectorConfigurations(tenant);
                 // For each connector configuration create a new instance of the connector
                 for (ConnectorConfiguration connectorConfiguration : connectorConfigurationList) {
-                    initializeConnectorByConfiguration(connectorConfiguration, serviceConfiguration,
-                            tenant);
+                    initializeConnectorByConfiguration(connectorConfiguration,  tenant);
                 }
             }
 
@@ -151,8 +146,7 @@ public class BootstrapService {
         }
     }
 
-    public AConnectorClient initializeConnectorByConfiguration(ConnectorConfiguration connectorConfiguration,
-            ServiceConfiguration serviceConfiguration, String tenant) throws ConnectorRegistryException {
+    public AConnectorClient initializeConnectorByConfiguration(ConnectorConfiguration connectorConfiguration, String tenant) throws ConnectorRegistryException {
         AConnectorClient connectorClient = null;
 
         if (MQTTClient.getConnectorType().equals(connectorConfiguration.getConnectorType())) {
@@ -165,16 +159,14 @@ public class BootstrapService {
             connectorRegistry.registerClient(tenant, mqttClient);
             connectorClient = mqttClient;
         }
-        if(MQTTConnectClient.getConnectorId().equals(connectorConfiguration.getConnectorId())) {
+        if(MQTTConnectClient.getConnectorType().equals(connectorConfiguration.getConnectorType())) {
             log.info("Tenant {} - Initializing MQTT Connect Connector with ident {}", tenant, connectorConfiguration.getIdent());
-            MQTTConnectClient mqttConnectClient = new MQTTConnectClient(credentials, tenant, mappingComponent,
-                    connectorConfigurationComponent, connectorConfiguration, c8YAgent, cachedThreadPool, objectMapper,
-                    additionalSubscriptionIdTest, baseUrl, platform);
+            MQTTConnectClient mqttConnectClient = new MQTTConnectClient(configurationRegistry,  connectorConfiguration, additionalSubscriptionIdTest, tenant, baseUrl, platform);
             connectorRegistry.registerClient(tenant, mqttConnectClient);
             mqttConnectClient.submitInitialize();
             mqttConnectClient.submitConnect();
             mqttConnectClient.submitHouskeeping();
-            client = mqttConnectClient;
+            connectorClient = mqttConnectClient;
         }
 
         // initialize AsynchronousDispatcherInbound
