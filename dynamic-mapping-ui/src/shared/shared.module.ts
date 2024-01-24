@@ -18,18 +18,28 @@
  *
  * @authors Christof Strack
  */
-import { NgModule } from "@angular/core";
-import { CoreModule } from "@c8y/ngx-components";
-import { JsonEditor2Component } from "./editor2/jsoneditor2.component";
-import { BsDatepickerModule } from "ngx-bootstrap/datepicker";
-import { PaginationModule } from "ngx-bootstrap/pagination";
-import { ConfirmationModalComponent } from "./confirmation/confirmation-modal.component";
+import { NgModule } from '@angular/core';
+import { CoreModule } from '@c8y/ngx-components';
+import { JsonEditor2Component } from './editor2/jsoneditor2.component';
+import { BsDatepickerModule } from 'ngx-bootstrap/datepicker';
+import { PaginationModule } from 'ngx-bootstrap/pagination';
+import { ConfirmationModalComponent } from './confirmation/confirmation-modal.component';
+import { CamelCasePipe } from './camel-case.pipe';
+import { CapitalizeCasePipe } from './capitazilze-case.pipe';
 
 @NgModule({
-  declarations: [JsonEditor2Component, ConfirmationModalComponent],
+  declarations: [
+    JsonEditor2Component,
+    ConfirmationModalComponent,
+    CamelCasePipe,
+    CapitalizeCasePipe
+  ],
   imports: [CoreModule, BsDatepickerModule, PaginationModule],
-  entryComponents: [JsonEditor2Component],
-  exports: [JsonEditor2Component, ConfirmationModalComponent],
-  providers: [],
+  exports: [
+    JsonEditor2Component,
+    ConfirmationModalComponent,
+    CamelCasePipe,
+    CapitalizeCasePipe
+  ]
 })
 export class SharedModule {}

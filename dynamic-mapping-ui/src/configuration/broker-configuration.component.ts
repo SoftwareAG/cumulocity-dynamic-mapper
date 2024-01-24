@@ -18,144 +18,209 @@
  *
  * @authors Christof Strack
  */
-import { Component, OnInit } from "@angular/core";
-import { FormControl, FormGroup } from "@angular/forms";
-import { AlertService, gettext } from "@c8y/ngx-components";
-import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
-import { Observable, from } from "rxjs";
-import { map } from "rxjs/operators";
-import packageJson from "../../package.json";
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
+import { AlertService, gettext } from '@c8y/ngx-components';
+import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { Observable } from 'rxjs';
+import packageJson from '../../package.json';
 import {
   ConfirmationModalComponent,
+  SharedService,
+  uuidCustom
+} from '../shared';
+import { EditConfigurationComponent } from './edit/edit-config-modal.component';
+import {
   ConnectorConfiguration,
-  ConnectorConfigurationCombined,
-  ConnectorPropertyConfiguration,
+  ConnectorSpecification,
   ConnectorStatus,
   Feature,
   Operation,
   ServiceConfiguration,
-  uuidCustom,
-} from "../shared";
-import { BrokerConfigurationService } from "./shared/broker-configuration.service";
-import { EditConfigurationComponent } from "./edit/edit-config-modal.component";
+  StatusEventTypes
+} from './shared/configuration.model';
+import { BrokerConfigurationService } from './shared/broker-configuration.service';
+import * as _ from 'lodash';
 
 @Component({
-  selector: "d11r-mapping-broker-configuration",
-  templateUrl: "broker-configuration.component.html",
+  selector: 'd11r-mapping-broker-configuration',
+  styleUrls: ['./broker-configuration.component.style.css'],
+  templateUrl: 'broker-configuration.component.html'
 })
-export class BrokerConfigurationComponent implements OnInit {
+export class BrokerConfigurationComponent implements OnInit, OnDestroy {
   version: string = packageJson.version;
-  isBrokerConnected: boolean;
-  isConnectionEnabled: boolean;
-  isBrokerAgentCreated$: Observable<boolean> = new Observable();
   monitorings$: Observable<ConnectorStatus>;
-  subscription: any;
   serviceForm: FormGroup;
   feature: Feature;
-  specifications: ConnectorPropertyConfiguration[] = [];
-  configurations: ConnectorConfigurationCombined[] = [];
+  specifications: ConnectorSpecification[] = [];
+  configurations: ConnectorConfiguration[];
+  statusLogs$: Observable<any[]>;
+  statusLogs: any[] = [];
+  filterStatusLog = {
+    eventType: StatusEventTypes.STATUS_CONNECTOR_EVENT_TYPE,
+    connectorIdent: 'ALL'
+  };
+  StatusEventTypes = StatusEventTypes;
 
   serviceConfiguration: ServiceConfiguration = {
     logPayload: true,
     logSubstitution: true,
+    logConnectorErrorInBackend: false,
+    sendConnectorLifecycle: false,
+    sendMappingStatus: false,
+    sendSubscriptionEvents: false,
+    sendNotificationLifecycle: false,
   };
 
   constructor(
     public bsModalService: BsModalService,
     public brokerConfigurationService: BrokerConfigurationService,
-    public alert: AlertService
+    public alert: AlertService,
+    private sharedService: SharedService
   ) {}
 
   async ngOnInit() {
-    console.log("Running version", this.version);
-    this.initForms();
-    await this.loadData();
-
-    this.initializeMonitoringService();
-    this.isBrokerAgentCreated$ = from(
-      this.brokerConfigurationService.getDynamicMappingServiceAgent()
-    )
-      // .pipe(map(agentId => agentId != null), tap(() => this.initializeMonitoringService()));
-      .pipe(map((agentId) => agentId != null));
-    this.feature = await this.brokerConfigurationService.getFeatures();
-  }
-
-  private async initializeMonitoringService(): Promise<void> {
-    this.subscription =
-      await this.brokerConfigurationService.subscribeMonitoringChannel();
-  }
-
-  private initForms(): void {
+    console.log('Running version', this.version);
     this.serviceForm = new FormGroup({
-      logPayload: new FormControl(""),
-      logSubstitution: new FormControl(""),
+      logPayload: new FormControl(''),
+      logSubstitution: new FormControl(''),
+      logConnectorErrorInBackend: new FormControl(''),
+      sendConnectorLifecycle: new FormControl(''),
+      sendMappingStatus: new FormControl(''),
+      sendSubscriptionEvents: new FormControl(''),
+      sendNotificationLifecycle: new FormControl(''),
     });
-  }
-
-  public async loadData(): Promise<void> {
-    let sc = await this.brokerConfigurationService.getServiceConfiguration();
+    this.feature = await this.sharedService.getFeatures();
     this.specifications =
       await this.brokerConfigurationService.getConnectorSpecifications();
-    this.configurations =
-      await this.brokerConfigurationService.getConnectorConfigurationsCombined();
-    if (sc) {
-      this.serviceConfiguration = sc;
-    }
+    this.brokerConfigurationService
+      .getConnectorConfigurationsLive()
+      .subscribe((confs) => {
+        this.configurations = confs;
+      });
+    this.brokerConfigurationService.getStatusLogs().subscribe((logs) => {
+      this.statusLogs = logs;
+    });
+    await this.loadData();
+    this.brokerConfigurationService.startConnectorStatusCheck();
+    this.statusLogs$ = this.brokerConfigurationService.getStatusLogs();
+  }
+
+  async refresh() {
+    this.brokerConfigurationService.resetCache();
+    await this.loadData();
+  }
+  async loadData(): Promise<void> {
+    this.serviceConfiguration =
+      await this.brokerConfigurationService.getServiceConfiguration();
+    await this.brokerConfigurationService.startConnectorConfigurations();
   }
 
   async clickedReconnect2NotificationEnpoint() {
     const response1 = await this.brokerConfigurationService.runOperation(
       Operation.REFRESH_NOTFICATIONS_SUBSCRIPTIONS
     );
-    console.log("Details reconnect2NotificationEnpoint", response1);
+    console.log('Details reconnect2NotificationEnpoint', response1);
     if (response1.status === 201) {
-      this.alert.success(gettext("Reconnect successful!"));
+      this.alert.success(gettext('Reconnect successful!'));
     } else {
-      this.alert.danger(gettext("Failed to reconnect."));
+      this.alert.danger(gettext('Failed to reconnect.'));
     }
   }
 
-  public async onConfigurationUpdate(index) {
-    const configuration = this.configurations[index].configuration;
+  async onConfigurationUpdate(index) {
+    const configuration = this.configurations[index];
 
     const initialState = {
       add: false,
       configuration: configuration,
-      specifications: this.specifications,
+      specifications: this.specifications
     };
     const modalRef = this.bsModalService.show(EditConfigurationComponent, {
-      initialState,
+      initialState
     });
     modalRef.content.closeSubject.subscribe(async (editedConfiguration) => {
-      console.log("Configuration after edit:", editedConfiguration);
+      console.log('Configuration after edit:', editedConfiguration);
       if (editedConfiguration) {
         this.configurations[index] = editedConfiguration;
+        // avoid to include status$
+        const clonedConfiguration = {
+          ident: editedConfiguration.ident,
+          connectorType: editedConfiguration.connectorType,
+          enabled: editedConfiguration.enabled,
+          name: editedConfiguration.name,
+          properties: editedConfiguration.properties
+        };
         const response =
           await this.brokerConfigurationService.updateConnectorConfiguration(
-            editedConfiguration
+            clonedConfiguration
           );
         if (response.status < 300) {
-          this.alert.success(gettext("Update successful"));
+          this.alert.success(gettext('Update successful'));
         } else {
           this.alert.danger(
-            gettext("Failed to update connector configuration")
+            gettext('Failed to update connector configuration')
           );
         }
-        await this.loadData();
       }
+      await this.loadData();
     });
   }
 
-  public async onConfigurationDelete(index) {
-    const configuration = this.configurations[index].configuration;
+  async onConfigurationCopy(index) {
+    const configuration = _.clone(this.configurations[index]);
+    configuration.ident = uuidCustom();
+    configuration.name = `${configuration.name}_copy`;
+    this.alert.warning(
+      gettext('Review properies carefully, e.g. client_id must be different across different client connectors to the same broker.')
+    );
 
     const initialState = {
-      title: "Delete connector",
-      message: "You are about to delete a connector. Do you want to proceed?",
+      add: false,
+      configuration: configuration,
+      specifications: this.specifications
+    };
+    const modalRef = this.bsModalService.show(EditConfigurationComponent, {
+      initialState
+    });
+    modalRef.content.closeSubject.subscribe(async (editedConfiguration) => {
+      console.log('Configuration after edit:', editedConfiguration);
+      if (editedConfiguration) {
+        this.configurations[index] = editedConfiguration;
+        // avoid to include status$
+        const clonedConfiguration = {
+          ident: editedConfiguration.ident,
+          connectorType: editedConfiguration.connectorType,
+          enabled: editedConfiguration.enabled,
+          name: editedConfiguration.name,
+          properties: editedConfiguration.properties
+        };
+        const response =
+          await this.brokerConfigurationService.createConnectorConfiguration(
+            clonedConfiguration
+          );
+        if (response.status < 300) {
+          this.alert.success(gettext('Update successful'));
+        } else {
+          this.alert.danger(
+            gettext('Failed to update connector configuration')
+          );
+        }
+      }
+      await this.loadData();
+    });
+  }
+
+  async onConfigurationDelete(index) {
+    const configuration = this.configurations[index];
+
+    const initialState = {
+      title: 'Delete connector',
+      message: 'You are about to delete a connector. Do you want to proceed?',
       labels: {
-        ok: "Delete",
-        cancel: "Cancel",
-      },
+        ok: 'Delete',
+        cancel: 'Cancel'
+      }
     };
     const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
       ConfirmationModalComponent,
@@ -163,17 +228,17 @@ export class BrokerConfigurationComponent implements OnInit {
     );
     confirmDeletionModalRef.content.closeSubject.subscribe(
       async (result: boolean) => {
-        console.log("Confirmation result:", result);
-        if (!!result) {
+        console.log('Confirmation result:', result);
+        if (result) {
           const response =
             await this.brokerConfigurationService.deleteConnectorConfiguration(
               configuration.ident
             );
           if (response.status < 300) {
-            this.alert.success(gettext("Deleted successful"));
+            this.alert.success(gettext('Deleted successful'));
           } else {
             this.alert.danger(
-              gettext("Failed to delete connector configuration")
+              gettext('Failed to delete connector configuration')
             );
           }
           await this.loadData();
@@ -181,87 +246,95 @@ export class BrokerConfigurationComponent implements OnInit {
         confirmDeletionModalRef.hide();
       }
     );
+    await this.loadData();
   }
 
-  public async onConfigurationAdd() {
+  async onConfigurationAdd() {
     const configuration: Partial<ConnectorConfiguration> = {
       properties: {},
-      ident: uuidCustom(),
+      ident: uuidCustom()
     };
     const initialState = {
       add: true,
       configuration: configuration,
-      specifications: this.specifications,
+      specifications: this.specifications
     };
     const modalRef = this.bsModalService.show(EditConfigurationComponent, {
-      initialState,
+      initialState
     });
     modalRef.content.closeSubject.subscribe(async (addedConfiguration) => {
-      console.log("Configuration after edit:", addedConfiguration);
+      console.log('Configuration after edit:', addedConfiguration);
       if (addedConfiguration) {
         this.configurations.push(addedConfiguration);
+        // avoid to include status$
+        const clonedConfiguration = {
+          ident: addedConfiguration.ident,
+          connectorType: addedConfiguration.connectorType,
+          enabled: addedConfiguration.enabled,
+          name: addedConfiguration.name,
+          properties: addedConfiguration.properties
+        };
         const response =
           await this.brokerConfigurationService.createConnectorConfiguration(
-            addedConfiguration
+            clonedConfiguration
           );
         if (response.status < 300) {
-          this.alert.success(gettext("Added successfully configuration"));
+          this.alert.success(gettext('Added successfully configuration'));
         } else {
           this.alert.danger(
-            gettext("Failed to update connector configuration")
+            gettext('Failed to update connector configuration')
           );
         }
-        await this.loadData();
       }
     });
+    await this.loadData();
   }
 
-  public async onConfigurationToogle(index) {
+  async onConfigurationToogle(index) {
     const configuration = this.configurations[index];
     const response1 = await this.brokerConfigurationService.runOperation(
-      configuration.configuration.enabled
-        ? Operation.DISCONNECT
-        : Operation.CONNECT,
-      { connectorIdent: configuration.configuration.ident }
+      configuration.enabled ? Operation.DISCONNECT : Operation.CONNECT,
+      { connectorIdent: configuration.ident }
     );
-    console.log("Details toogle activation to broker", response1);
+    console.log('Details toogle activation to broker', response1);
     if (response1.status === 201) {
       // if (response1.status === 201 && response2.status === 201) {
-      this.alert.success(gettext("Connection successful"));
+      this.alert.success(gettext('Connection updated successful'));
     } else {
-      this.alert.danger(gettext("Failed to establish connection"));
+      this.alert.danger(gettext('Failed to establish connection'));
     }
     await this.loadData();
   }
 
-  public async resetStatusMapping() {
+  async resetStatusMapping() {
     const res = await this.brokerConfigurationService.runOperation(
       Operation.RESET_STATUS_MAPPING
     );
     if (res.status < 300) {
-      this.alert.success(gettext("Successfully reset"));
+      this.alert.success(gettext('Successfully reset'));
     } else {
-      this.alert.danger(gettext("Failed to rest statistic."));
+      this.alert.danger(gettext('Failed to rest statistic.'));
     }
   }
 
-  ngOnDestroy(): void {
-    console.log("Stop subscription");
-    this.brokerConfigurationService.unsubscribeFromMonitoringChannel(
-      this.subscription
-    );
-  }
-
   async clickedSaveServiceConfiguration() {
-    let conf: ServiceConfiguration = {
-      ...this.serviceConfiguration,
+    const conf: ServiceConfiguration = {
+      ...this.serviceConfiguration
     };
     const response =
       await this.brokerConfigurationService.updateServiceConfiguration(conf);
     if (response.status < 300) {
-      this.alert.success(gettext("Update successful"));
+      this.alert.success(gettext('Update successful'));
     } else {
-      this.alert.danger(gettext("Failed to update service configuration"));
+      this.alert.danger(gettext('Failed to update service configuration'));
     }
+  }
+
+  updateStatusLogs() {
+    this.brokerConfigurationService.updateStatusLogs(this.filterStatusLog);
+  }
+
+  ngOnDestroy(): void {
+    this.brokerConfigurationService.stopConnectorStatusSubscriptions();
   }
 }

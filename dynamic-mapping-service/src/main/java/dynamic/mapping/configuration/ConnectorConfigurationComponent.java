@@ -42,8 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class ConnectorConfigurationComponent {
     private static final String OPTION_CATEGORY_CONFIGURATION = "dynamic.mapper.service";
-    private static final String OPTION_KEY_CONNECTION_CONFIGURATION = "credentials.connection.configuration";
-    private static final String OPTION_KEY_SERVICE_CONFIGURATION = "service.configuration";
+    private static final String OPTION_KEY_CONNECTIOR_PREFIX = "credentials.connection.configuration";
 
     private final TenantOptionApi tenantOptionApi;
 
@@ -63,7 +62,7 @@ public class ConnectorConfigurationComponent {
     }
 
     public String getConnectorOptionKey(String ident) {
-        return OPTION_KEY_CONNECTION_CONFIGURATION + "." + ident;
+        return OPTION_KEY_CONNECTIOR_PREFIX + "." + ident;
     }
 
     public void saveConnectorConfiguration(final ConnectorConfiguration configuration)
@@ -78,7 +77,7 @@ public class ConnectorConfigurationComponent {
         tenantOptionApi.save(optionRepresentation);
     }
 
-    public void deleteConnectionConfiguration(final String ident)
+    public void deleteConnectorConfiguration(final String ident)
             throws JsonProcessingException {
         if (ident == null) {
             return;
@@ -100,7 +99,7 @@ public class ConnectorConfigurationComponent {
                 final ConnectorConfiguration configuration = new ObjectMapper().readValue(
                         optionRepresentation.getValue(),
                         ConnectorConfiguration.class);
-                log.debug("Tenant {} - Returning connection configuration found: {}:", tenant, configuration.getConnectorId());
+                log.debug("Tenant {} - Returning connection configuration found: {}:", tenant, configuration.getConnectorType());
                 rt = configuration;
             } catch (SDKException exception) {
                 log.warn("Tenant {} - No configuration found, returning empty element!", tenant);
@@ -116,7 +115,6 @@ public class ConnectorConfigurationComponent {
     }
 
     public List<ConnectorConfiguration> getConnectorConfigurations(String tenant) {
-        final OptionPK option = new OptionPK();
         final List<ConnectorConfiguration> connectorConfigurations = new ArrayList<>();
         subscriptionsService.runForTenant(tenant, () -> {
             try {
@@ -124,13 +122,13 @@ public class ConnectorConfigurationComponent {
                         .getAllOptionsForCategory(OPTION_CATEGORY_CONFIGURATION);
                 for (OptionRepresentation optionRepresentation : optionRepresentationList) {
                     // Just Connector Config --> Ignoring Service Configuration
-                    String optionKey = OPTION_KEY_CONNECTION_CONFIGURATION.replace("credentials.", "");
+                    String optionKey = OPTION_KEY_CONNECTIOR_PREFIX.replace("credentials.", "");
                     if (optionRepresentation.getKey().startsWith(optionKey)) {
                         final ConnectorConfiguration configuration = new ObjectMapper().readValue(
                                 optionRepresentation.getValue(),
                                 ConnectorConfiguration.class);
                         connectorConfigurations.add(configuration);
-                        log.debug("Tenant {} - Connection configuration found: {}:", tenant, configuration.getConnectorId());
+                        log.debug("Tenant {} - Connection configuration found: {}:", tenant, configuration.getConnectorType());
                     }
                 }
             } catch (SDKException exception) {
@@ -148,11 +146,9 @@ public class ConnectorConfigurationComponent {
         List<ConnectorConfiguration> configs = getConnectorConfigurations(tenant);
         for (ConnectorConfiguration config : configs) {
             OptionPK optionPK = new OptionPK(OPTION_CATEGORY_CONFIGURATION,
-                    getConnectorOptionKey(config.getConnectorId()));
+                    getConnectorOptionKey(config.getConnectorType()));
             tenantOptionApi.delete(optionPK);
         }
-        OptionPK optionPK = new OptionPK(OPTION_CATEGORY_CONFIGURATION, OPTION_KEY_SERVICE_CONFIGURATION);
-        tenantOptionApi.delete(optionPK);
     }
 
     public ConnectorConfiguration enableConnection(String connectorIdent, boolean enabled) {
@@ -181,5 +177,4 @@ public class ConnectorConfigurationComponent {
         }
         return null;
     }
-
 }

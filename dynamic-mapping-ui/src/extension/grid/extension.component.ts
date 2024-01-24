@@ -19,33 +19,26 @@
  * @authors Christof Strack
  */
 
-import { Component, OnInit } from "@angular/core";
-import { IManagedObject, IResultList } from "@c8y/client";
-import { BsModalService } from "ngx-bootstrap/modal";
-import { BehaviorSubject, Observable } from "rxjs";
-import { shareReplay, switchMap, tap } from "rxjs/operators";
-import { ExtensionService } from "../share/extension.service";
-import { BrokerConfigurationService } from "../../configuration";
-import { Operation } from "../../shared";
-import { AddExtensionComponent } from "../extension-modal/add-extension.component";
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { IManagedObject, IResultList } from '@c8y/client';
+import { BsModalService } from 'ngx-bootstrap/modal';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { shareReplay, switchMap, tap } from 'rxjs/operators';
+import { ExtensionService } from '../share/extension.service';
+import { BrokerConfigurationService, Operation } from '../../configuration';
+import { AddExtensionComponent } from '../extension-modal/add-extension.component';
 
 @Component({
-  selector: "d11r-mapping-extension",
-  templateUrl: "./extension.component.html",
-  styleUrls: ["../share/extension.component.css"],
+  selector: 'd11r-mapping-extension',
+  templateUrl: './extension.component.html',
+  styleUrls: ['../share/extension.component.css']
 })
-export class ExtensionComponent implements OnInit {
+export class ExtensionComponent implements OnInit, OnDestroy {
   reloading: boolean = false;
   reload$: BehaviorSubject<void> = new BehaviorSubject(null);
   externalExtensionEnabled: boolean = true;
 
-  extensions$: Observable<IResultList<IManagedObject>> = this.reload$.pipe(
-    tap(() => (this.reloading = true)),
-    switchMap(() => this.extensionService.getExtensionsEnriched(undefined)),
-    tap(console.log),
-    tap(() => (this.reloading = false)),
-    shareReplay()
-  );
+  extensions$: Observable<IResultList<IManagedObject>>;
 
   listClass: string;
 
@@ -56,9 +49,16 @@ export class ExtensionComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
+    this.extensions$ = this.reload$.pipe(
+        tap(() => (this.reloading = true)),
+        switchMap(() => this.extensionService.getExtensionsEnriched(undefined)),
+        tap(console.log),
+        tap(() => (this.reloading = false)),
+        shareReplay()
+      );
     this.loadExtensions();
     this.extensions$.subscribe((exts) => {
-      console.log("New extenions:", exts);
+      console.log('New extenions:', exts);
     });
     this.externalExtensionEnabled = (
       await this.brokerConfigurationService.getServiceConfiguration()
@@ -70,18 +70,25 @@ export class ExtensionComponent implements OnInit {
   }
 
   async reloadExtensions() {
-    await this.brokerConfigurationService.runOperation(Operation.RELOAD_EXTENSIONS);
+    await this.brokerConfigurationService.runOperation(
+      Operation.RELOAD_EXTENSIONS
+    );
     this.reload$.next();
   }
 
   addExtension() {
     const initialState = {};
     const modalRef = this.bsModalService.show(AddExtensionComponent, {
-      initialState,
+      initialState
     });
     modalRef.content.closeSubject.subscribe(() => {
       this.reloadExtensions();
       modalRef.hide();
+      this.reload$.next();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.reload$.complete();
   }
 }

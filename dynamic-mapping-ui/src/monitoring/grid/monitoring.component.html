@@ -19,7 +19,7 @@
   ~ @authors Christof Strack
   -->
 
-<c8y-title translate>Dynamic Mapping</c8y-title>
+<c8y-title translate>Mapping Monitoring</c8y-title>
 <c8y-action-bar-item [placement]="'right'">
   <button
     class="btn btn-link"
@@ -27,20 +27,31 @@
     (click)="refreshMappingStatus()"
   >
     <i c8yIcon="refresh"></i>
-    {{ "Refresh" | translate }}
+    {{ 'Refresh' | translate }}
   </button>
 </c8y-action-bar-item>
 <div class="card">
-  <div class="col-lg-12 bg-white">
-    <div class="card-block">
-      <c8y-data-grid
-        [title]="'Mapping Monitoring' | translate"
-        [columns]="columns"
-        [rows]="mappingStatus$ | async"
-        [pagination]="pagination"
-        [actionControls]="actionControls"
-      >
-      </c8y-data-grid>
-    </div>
+  <!-- <div class="card-block" style="max-height: 400px; overflow: auto"> -->
+  <div class="card-block">
+    <c8y-data-grid
+      [title]="'Mapping Monitoring' | translate"
+      [columns]="columns"
+      [rows]="mappingStatus$ | async"
+      [pagination]="pagination"
+      [actionControls]="actionControls"
+    >
+    </c8y-data-grid>
   </div>
 </div>
+<!-- <div class="card">
+  <div class="card-header p-l-32">
+    <h4 class="card-title">Messages Inbound & Outbound</h4>
+  </div>
+  <div class="card-block">
+    <div class="col-lg-10 col-lg-offset-1">
+      <d11r-monitoring-chart
+        [mappingStatus]="mappingStatus$"
+      ></d11r-monitoring-chart>
+    </div>
+  </div>
+</div> -->

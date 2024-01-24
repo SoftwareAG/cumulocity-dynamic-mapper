@@ -19,27 +19,23 @@
  * @authors Christof Strack
  */
 
-import { NgModule } from "@angular/core";
-import { CoreModule, hookRoute } from "@c8y/ngx-components";
-import { BrokerConfigurationComponent } from "./broker-configuration.component";
-import { AdminGuard } from "../shared/admin.guard";
-import { EditConfigurationComponent } from "./edit/edit-config-modal.component";
-import { SharedModule } from "../shared/shared.module";
+import { NgModule } from '@angular/core';
+import { CoreModule, hookRoute } from '@c8y/ngx-components';
+import { AdminGuard, SharedModule } from '../shared';
+import { BrokerConfigurationComponent } from './broker-configuration.component';
+import { EditConfigurationComponent } from './edit/edit-config-modal.component';
+import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
 
 @NgModule({
-  declarations: [
-    BrokerConfigurationComponent,
-    EditConfigurationComponent,
-  ],
-  imports: [CoreModule, SharedModule],
-  entryComponents: [ EditConfigurationComponent],
+  declarations: [BrokerConfigurationComponent, EditConfigurationComponent],
+  imports: [CoreModule, SharedModule,BsDropdownModule.forRoot()],
   exports: [],
   providers: [
     hookRoute({
-      path: "sag-ps-pkg-dynamic-mapping/configuration",
+      path: 'sag-ps-pkg-dynamic-mapping/configuration',
       component: BrokerConfigurationComponent,
-      canActivate: [AdminGuard],
-    }),
-  ],
+      canActivate: [AdminGuard]
+    })
+  ]
 })
 export class BrokerConfigurationModule {}

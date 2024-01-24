@@ -18,22 +18,22 @@
  *
  * @authors Christof Strack
  */
-import { Injectable } from "@angular/core";
-import { CanActivate } from "@angular/router";
-import { BrokerConfigurationService } from "../configuration/shared/broker-configuration.service";
+import { Injectable } from '@angular/core';
+import { CanActivate } from '@angular/router';
+import { SharedService } from './shared.service';
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class AdminGuard implements CanActivate {
   private adminPromise: Promise<boolean>;
 
-  constructor(private brokerConfigurationService: BrokerConfigurationService) {}
+  constructor(private sharedService: SharedService) {}
 
   canActivate(): Promise<boolean> {
-    this.adminPromise = this.brokerConfigurationService.getFeatures().then((conf) => {
-      console.log(
-        "User has externalExtensionEnabled:",
-        conf.userHasMappingAdminRole
-      );
+    this.adminPromise = this.sharedService.getFeatures().then((conf) => {
+      // console.log(
+      //   "User has externalExtensionEnabled:",
+      //   conf.userHasMappingAdminRole
+      // );
       return conf.userHasMappingAdminRole;
     });
 

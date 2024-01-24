@@ -28,8 +28,9 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import dynamic.mapping.model.InnerNode;
-import dynamic.mapping.model.InnerNodeSerializer;
+import dynamic.mapping.model.TreeNode;
+import dynamic.mapping.model.TreeNodeSerializer;
+
 import org.joda.time.DateTime;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -73,14 +74,11 @@ import com.fasterxml.jackson.databind.ser.Serializers;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-
 @MicroserviceApplication
 @EnableContextSupport
 @SpringBootApplication
 @EnableAsync
-@EnableScheduling 
-@Slf4j
+@EnableScheduling
 public class App {
 
     @Bean
@@ -102,24 +100,25 @@ public class App {
         ObjectMapper objectMapper = baseObjectMapper();
         objectMapper.registerModule(cumulocityModule());
         SimpleModule module = new SimpleModule();
-        module.addSerializer(InnerNode.class, new InnerNodeSerializer());
+        module.addSerializer(TreeNode.class, new TreeNodeSerializer());
         objectMapper.registerModule(module);
         return objectMapper;
     }
 
-
-
     public static ObjectMapper baseObjectMapper() {
         final ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(NON_NULL);
-        // objectMapper.configure(SerializationFeature.WRITE_ENUMS_USING_TO_STRING, true);
-        // objectMapper.configure(DeserializationFeature.READ_ENUMS_USING_TO_STRING, true);
-        // objectMapper.configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false);
+        // objectMapper.configure(SerializationFeature.WRITE_ENUMS_USING_TO_STRING,
+        // true);
+        // objectMapper.configure(DeserializationFeature.READ_ENUMS_USING_TO_STRING,
+        // true);
+        // objectMapper.configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE,
+        // false);
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-        //objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-        //objectMapper.setDateFormat(new RFC3339DateFormat());
-        //objectMapper.registerModule(new JavaTimeModule());
+        // objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        // objectMapper.setDateFormat(new RFC3339DateFormat());
+        // objectMapper.registerModule(new JavaTimeModule());
         objectMapper.registerModule(new JodaModule());
 
         return objectMapper;
@@ -131,7 +130,7 @@ public class App {
 
         class SvensonDeserializers extends Deserializers.Base {
             public JsonDeserializer<?> findBeanDeserializer(JavaType type, DeserializationConfig config,
-                                                            BeanDescription beanDesc) {
+                    BeanDescription beanDesc) {
                 final Class<?> rawClass = type.getRawClass();
 
                 // base resource representation is deserialized using svenson
@@ -153,7 +152,7 @@ public class App {
         class SvensonSerializers extends Serializers.Base {
             @Override
             public JsonSerializer<?> findSerializer(final SerializationConfig config, final JavaType type,
-                                                    BeanDescription beanDesc) {
+                    BeanDescription beanDesc) {
                 final Class<?> rawClass = type.getRawClass();
 
                 // gid is serialized using svenson
@@ -161,7 +160,7 @@ public class App {
                     return new JsonSerializer<Object>() {
                         @SneakyThrows
                         public void serialize(Object value, final JsonGenerator gen,
-                                              final SerializerProvider serializers) {
+                                final SerializerProvider serializers) {
                             final GId representation = (GId) value;
                             gen.writeString(representation.getValue());
                         }
@@ -209,8 +208,6 @@ public class App {
         @JsonAnySetter
         void setProperty(String name, Object value);
     }
-
-
 
     public static void main(String[] args) {
         SpringApplication.run(App.class, args);

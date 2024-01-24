@@ -29,17 +29,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import dynamic.mapping.core.ConnectorStatus;
+import dynamic.mapping.core.C8YAgent;
+import dynamic.mapping.core.ConnectorStatusEvent;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class  MappingServiceRepresentation implements Serializable  {
 
-  public static final String CONNECTOR_STATUS_FRAGMENT = "d11r_connectorStatus";
-  public static final String MAPPING_STATUS_FRAGMENT = "d11r_mappingStatus";
   public static final String AGENT_ID = "d11r_mappingService";
   public static final String AGENT_NAME = "Dynamic Mapping Service";
+  public static final String AGENT_TYPE = "d11r_mappingService_type";
 
   @JsonProperty("id")
   private String id;
@@ -53,10 +53,9 @@ public class  MappingServiceRepresentation implements Serializable  {
   @JsonProperty(value = "description")
   private String description;
 
-  @JsonProperty(value = MAPPING_STATUS_FRAGMENT)
+  @JsonProperty(value = C8YAgent.MAPPING_FRAGMENT)
   private ArrayList<MappingStatus> mappingStatus;
 
-  @JsonProperty(value = CONNECTOR_STATUS_FRAGMENT)
-  private ConnectorStatus connectorStatus;
-
+  @JsonProperty(value = C8YAgent.CONNECTOR_FRAGMENT)
+  private ConnectorStatusEvent connectorStatus;
 }

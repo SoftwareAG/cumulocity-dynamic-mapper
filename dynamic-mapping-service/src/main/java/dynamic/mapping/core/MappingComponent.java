@@ -21,6 +21,8 @@
 
 package dynamic.mapping.core;
 
+import static java.util.Map.entry;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,7 +33,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -43,13 +44,12 @@ import com.cumulocity.sdk.client.inventory.InventoryApi;
 import com.cumulocity.sdk.client.inventory.InventoryFilter;
 import com.cumulocity.sdk.client.inventory.ManagedObjectCollection;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import dynamic.mapping.model.API;
 import dynamic.mapping.model.Direction;
-import dynamic.mapping.model.InnerNode;
+import dynamic.mapping.model.TreeNode;
 import dynamic.mapping.model.Mapping;
 import dynamic.mapping.model.MappingRepresentation;
 import dynamic.mapping.model.MappingServiceRepresentation;
@@ -66,12 +66,8 @@ public class MappingComponent {
 
     private Map<String, Set<Mapping>> dirtyMappings = new HashMap<>();
 
-    private ObjectMapper objectMapper;
-
     @Autowired
-    public void setObjectMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+    ConfigurationRegistry configurationRegistry;
 
     @Autowired
     private InventoryApi inventoryApi;
@@ -79,11 +75,12 @@ public class MappingComponent {
     @Autowired
     private MicroserviceSubscriptionsService subscriptionsService;
 
-    private Map<String, MappingServiceRepresentation> mappingServiceRepresentations = new HashMap<>();
-    private Map<String, Boolean> initialized = new HashMap<>();
+    // structure: <tenant, initialized>
+    private Map<String, Boolean> initializedMappingStatus = new HashMap<>();
 
+    // structure: <tenant, < connectorIdent , <connectorProperty , connectorValue>>>
     @Getter
-    private Map<String, Map<String, String>> consolidatedConnectorStatus = new HashMap<>();
+    private Map<String, Map<String, Map<String, String>>> consolidatedConnectorStatus = new HashMap<>();
 
     // cache of inbound mappings stored by mapping.id
     @Getter
@@ -98,17 +95,25 @@ public class MappingComponent {
 
     // cache of inbound mappings stored in a tree used for resolving
     @Getter
-    private Map<String, InnerNode> resolverMappingInbound = new HashMap<>();
+    private Map<String, TreeNode> resolverMappingInbound = new HashMap<>();
+
+    public void initializeMappingCaches(String tenant) {
+        cacheMappingInbound.put(tenant, new HashMap<>());
+        cacheMappingOutbound.put(tenant, new HashMap<>());
+        resolverMappingOutbound.put(tenant, new HashMap<>());
+        resolverMappingInbound.put(tenant, TreeNode.createRootNode(tenant));
+    }
 
     public void initializeMappingStatus(String tenant, boolean reset) {
-        MappingServiceRepresentation mappingServiceRepresentation = mappingServiceRepresentations.get(tenant);
+        MappingServiceRepresentation mappingServiceRepresentation = configurationRegistry
+                .getMappingServiceRepresentations().get(tenant);
         if (mappingServiceRepresentation.getMappingStatus() != null && !reset) {
             log.info("Tenant {} - Initializing status: {}, {} ", tenant,
                     mappingServiceRepresentation.getMappingStatus(),
                     (mappingServiceRepresentation.getMappingStatus() == null
                             || mappingServiceRepresentation.getMappingStatus().size() == 0 ? 0
                                     : mappingServiceRepresentation.getMappingStatus().size()));
-            Map<String, MappingStatus> mappingStatus = new HashedMap();
+            Map<String, MappingStatus> mappingStatus = new HashMap<>();
             mappingServiceRepresentation.getMappingStatus().forEach(ms -> {
                 mappingStatus.put(ms.ident, ms);
             });
@@ -120,74 +125,88 @@ public class MappingComponent {
             tenantStatusMapping.get(tenant).put(MappingStatus.UNSPECIFIED_MAPPING_STATUS.ident,
                     MappingStatus.UNSPECIFIED_MAPPING_STATUS);
         }
-        initialized.put(tenant, true);
-        resolverMappingInbound.put(tenant, InnerNode.createRootNode());
+        initializedMappingStatus.put(tenant, true);
+        resolverMappingInbound.put(tenant, TreeNode.createRootNode(tenant));
         if (cacheMappingInbound.get(tenant) == null)
             cacheMappingInbound.put(tenant, new HashMap<>());
         if (cacheMappingOutbound.get(tenant) == null)
             cacheMappingOutbound.put(tenant, new HashMap<>());
     }
 
-    public void initializeMappingComponent(String tenant, MappingServiceRepresentation mappingServiceRepresentation) {
-        this.mappingServiceRepresentations.put(tenant, mappingServiceRepresentation);
-        initializeMappingStatus(tenant, false);
+    public void cleanMappingStatus(String tenant) {
+        resolverMappingInbound.remove(tenant);
+        tenantStatusMapping.remove(tenant);
     }
 
     public void sendMappingStatus(String tenant) {
-        subscriptionsService.runForTenant(tenant, () -> {
-            boolean initialized = this.initialized.get(tenant);
-            Map<String, MappingStatus> statusMapping = tenantStatusMapping.get(tenant);
-            MappingServiceRepresentation mappingServiceRepresentation = mappingServiceRepresentations.get(tenant);
-            // avoid sending empty monitoring events
-            if (statusMapping.values().size() > 0 && mappingServiceRepresentation != null && initialized) {
-                log.debug("Sending monitoring: {}", statusMapping.values().size());
-                Map<String, Object> service = new HashMap<String, Object>();
-                MappingStatus[] ms = statusMapping.values().toArray(new MappingStatus[0]);
-                // add current name of mappings to the status messages
-                for (int index = 0; index < ms.length; index++) {
-                    ms[index].name = "#";
-
-                    if (cacheMappingInbound.get(tenant).containsKey(ms[index].id)) {
-                        ms[index].name = cacheMappingInbound.get(tenant).get(ms[index].id).name;
-                    } else if (cacheMappingOutbound.get(tenant).containsKey(ms[index].id)) {
-                        ms[index].name = cacheMappingOutbound.get(tenant).get(ms[index].id).name;
+        if (configurationRegistry.getServiceConfigurations().get(tenant).sendMappingStatus) {
+            subscriptionsService.runForTenant(tenant, () -> {
+                boolean initialized = this.initializedMappingStatus.get(tenant);
+                Map<String, MappingStatus> statusMapping = tenantStatusMapping.get(tenant);
+                MappingServiceRepresentation mappingServiceRepresentation = configurationRegistry
+                        .getMappingServiceRepresentations().get(tenant);
+                // avoid sending empty monitoring events
+                if (statusMapping.values().size() > 0 && mappingServiceRepresentation != null && initialized) {
+                    log.debug("Tenant {} - Sending monitoring: {}", tenant, statusMapping.values().size());
+                    Map<String, Object> service = new HashMap<String, Object>();
+                    MappingStatus[] ms = statusMapping.values().toArray(new MappingStatus[0]);
+                    // add current name of mappings to the status messages
+                    for (int index = 0; index < ms.length; index++) {
+                        ms[index].name = "#";
+                        if (cacheMappingInbound.get(tenant).containsKey(ms[index].id)) {
+                            ms[index].name = cacheMappingInbound.get(tenant).get(ms[index].id).name;
+                        } else if (cacheMappingOutbound.get(tenant).containsKey(ms[index].id)) {
+                            ms[index].name = cacheMappingOutbound.get(tenant).get(ms[index].id).name;
+                        }
                     }
+                    service.put(C8YAgent.MAPPING_FRAGMENT, ms);
+                    ManagedObjectRepresentation updateMor = new ManagedObjectRepresentation();
+                    updateMor.setId(GId.asGId(mappingServiceRepresentation.getId()));
+                    updateMor.setAttrs(service);
+                    this.inventoryApi.update(updateMor);
+                } else {
+                    log.debug("Tenant {} - Ignoring mapping monitoring: {}, initialized: {}", tenant,
+                            statusMapping.values().size(),
+                            initialized);
                 }
-                service.put(MappingServiceRepresentation.MAPPING_STATUS_FRAGMENT, ms);
+            });
+        }
+    }
+
+    public void sendConnectorLifecycle(String tenant, String connectorIdent, ConnectorStatusEvent connectorStatus,
+            String connectorName) {
+        if (configurationRegistry.getServiceConfigurations().get(tenant).sendConnectorLifecycle) {
+            subscriptionsService.runForTenant(tenant, () -> {
+                MappingServiceRepresentation mappingServiceRepresentation = configurationRegistry
+                        .getMappingServiceRepresentations().get(tenant);
+                Map<String, Map<String, String>> ccs = consolidatedConnectorStatus.getOrDefault(tenant,
+                        new HashMap<String, Map<String, String>>());
+                log.debug("Tenant {} - Sending status connector: {}", tenant, ccs);
+                Map<String, String> stMap = Map.ofEntries(
+                        entry("status", connectorStatus.getStatus().name()),
+                        entry("message", connectorStatus.message),
+                        entry("connectorName", connectorName),
+                        entry("date", connectorStatus.date));
+                ccs.put(connectorIdent, stMap);
+                consolidatedConnectorStatus.put(tenant, ccs);
+                Map<String, Object> service = new HashMap<String, Object>();
+                service.put(C8YAgent.CONNECTOR_FRAGMENT, ccs);
                 ManagedObjectRepresentation updateMor = new ManagedObjectRepresentation();
                 updateMor.setId(GId.asGId(mappingServiceRepresentation.getId()));
                 updateMor.setAttrs(service);
                 this.inventoryApi.update(updateMor);
-            } else {
-                log.debug("Tenant {} - Ignoring mapping monitoring: {}, initialized: {}", tenant,
-                        statusMapping.values().size(),
-                        initialized);
-            }
-        });
-    }
-
-    public void sendConnectorStatus(String tenant, ConnectorStatus connectorStatus, String connectorIdent) {
-        subscriptionsService.runForTenant(tenant, () -> {
-            MappingServiceRepresentation mappingServiceRepresentation = mappingServiceRepresentations.get(tenant);
-            log.debug("Tenant {} - Sending status connector: {}", tenant, connectorStatus);
-            Map<String, String> ccs = consolidatedConnectorStatus.getOrDefault(tenant, new HashMap<String, String>());
-            ccs.put(connectorIdent, connectorStatus.getStatus().name());
-            Map<String, Object> service = new HashMap<String, Object>();
-            service.put(MappingServiceRepresentation.CONNECTOR_STATUS_FRAGMENT, ccs);
-            ManagedObjectRepresentation updateMor = new ManagedObjectRepresentation();
-            updateMor.setId(GId.asGId(mappingServiceRepresentation.getId()));
-            updateMor.setAttrs(service);
-            this.inventoryApi.update(updateMor);
-        });
+            });
+        }
     }
 
     public MappingStatus getMappingStatus(String tenant, Mapping m) {
-        //log.info("Tenant {} - get MappingStatus: {}", tenant, m.ident);
+        // log.info("Tenant {} - get MappingStatus: {}", tenant, m.ident);
         Map<String, MappingStatus> statusMapping = tenantStatusMapping.get(tenant);
         MappingStatus ms = statusMapping.get(m.ident);
         if (ms == null) {
             log.info("Tenant {} - Adding: {}", tenant, m.ident);
-            ms = new MappingStatus(m.id, m.name, m.ident, m.subscriptionTopic, m.publishTopic, 0, 0, 0, 0);
+            ms = new MappingStatus(m.id, m.name, m.ident, m.direction.name(), m.subscriptionTopic, m.publishTopic, 0, 0,
+                    0, 0);
             statusMapping.put(m.ident, ms);
         }
         return ms;
@@ -327,11 +346,11 @@ public class MappingComponent {
     }
 
     private ManagedObjectRepresentation toManagedObject(MappingRepresentation mr) {
-        return objectMapper.convertValue(mr, ManagedObjectRepresentation.class);
+        return configurationRegistry.getObjectMapper().convertValue(mr, ManagedObjectRepresentation.class);
     }
 
     private MappingRepresentation toMappingObject(ManagedObjectRepresentation mor) {
-        return objectMapper.convertValue(mor, MappingRepresentation.class);
+        return configurationRegistry.getObjectMapper().convertValue(mor, MappingRepresentation.class);
     }
 
     private void deleteMappingStatus(String tenant, String id) {
@@ -396,6 +415,9 @@ public class MappingComponent {
     public Mapping deleteFromMappingCache(String tenant, Mapping mapping) {
         if (Direction.OUTBOUND.equals(mapping.direction)) {
             Mapping deletedMapping = cacheMappingOutbound.get(tenant).remove(mapping.id);
+            log.info("Tenant {} - Preparing to delete {} {}", tenant, resolverMappingOutbound.get(tenant),
+                    mapping.filterOutbound);
+
             List<Mapping> cmo = resolverMappingOutbound.get(tenant).get(mapping.filterOutbound);
             cmo.removeIf(m -> mapping.id.equals(m.id));
             return deletedMapping;
@@ -406,13 +428,13 @@ public class MappingComponent {
         }
     }
 
-    public InnerNode rebuildMappingTree(List<Mapping> mappings) {
-        InnerNode in = InnerNode.createRootNode();
+    public TreeNode rebuildMappingTree(List<Mapping> mappings, String tenant) {
+        TreeNode in = TreeNode.createRootNode(tenant);
         mappings.forEach(m -> {
             try {
                 in.addMapping(m);
             } catch (ResolveException e) {
-                log.error("Could not add mapping {}, ignoring mapping", m);
+                log.error("Tenant {} - Could not add mapping {}, ignoring mapping", tenant, m);
             }
         });
         return in;
@@ -423,7 +445,7 @@ public class MappingComponent {
         cacheMappingInbound.replace(tenant, updatedMappings.stream()
                 .collect(Collectors.toMap(Mapping::getId, Function.identity())));
         // update mappings tree
-        resolverMappingInbound.replace(tenant, rebuildMappingTree(updatedMappings));
+        resolverMappingInbound.replace(tenant, rebuildMappingTree(updatedMappings, tenant));
         return updatedMappings;
     }
 
@@ -462,7 +484,7 @@ public class MappingComponent {
 
     public void cleanDirtyMappings(String tenant) throws Exception {
         // test if for this tenant dirty mappings exist
-        log.debug("Testing for dirty maps");
+        log.debug("Tenant {} - Testing for dirty maps", tenant);
         if (dirtyMappings.get(tenant) != null) {
             for (Mapping mapping : dirtyMappings.get(tenant)) {
                 log.info("Tenant {} - Found mapping to be saved: {}, {}", tenant, mapping.id, mapping.snoopStatus);
@@ -488,7 +510,7 @@ public class MappingComponent {
     }
 
     public List<Mapping> resolveMappingInbound(String tenant, String topic) throws ResolveException {
-        List<InnerNode> resolvedMappings = getResolverMappingInbound().get(tenant)
+        List<TreeNode> resolvedMappings = getResolverMappingInbound().get(tenant)
                 .resolveTopicPath(Mapping.splitTopicIncludingSeparatorAsList(topic));
         return resolvedMappings.stream().filter(tn -> tn.isMappingNode())
                 .map(mn -> mn.getMapping()).collect(Collectors.toList());

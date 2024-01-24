@@ -38,9 +38,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class ServiceConfigurationComponent {
-    private static final String OPTION_CATEGORY_CONFIGURATION = "mqtt.dynamic.service";
+    private static final String OPTION_CATEGORY_CONFIGURATION = "dynamic.mapper.service";
 
-    private static final String OPTION_KEY_CONNECTION_CONFIGURATION = "credentials.connection.configuration";
     private static final String OPTION_KEY_SERVICE_CONFIGURATION = "service.configuration";
 
     private final TenantOptionApi tenantOptionApi;
@@ -70,23 +69,25 @@ public class ServiceConfigurationComponent {
         tenantOptionApi.save(optionRepresentation);
     }
 
-    public ServiceConfiguration loadServiceConfiguration() {
+    public ServiceConfiguration getServiceConfiguration(String tenant) {
         final OptionPK option = new OptionPK();
         option.setCategory(OPTION_CATEGORY_CONFIGURATION);
         option.setKey(OPTION_KEY_SERVICE_CONFIGURATION);
-        ServiceConfiguration result = subscriptionsService.callForTenant(subscriptionsService.getTenant(), () -> {
-            String tenant = subscriptionsService.getTenant();
+        ServiceConfiguration result = subscriptionsService.callForTenant(tenant, () -> {
             ServiceConfiguration rt = null;
             try {
                 final OptionRepresentation optionRepresentation = tenantOptionApi.getOption(option);
-                final ServiceConfiguration configuration = new ObjectMapper().readValue(optionRepresentation.getValue(),
-                        ServiceConfiguration.class);
-                log.debug("Tenant {} - Returning service configuration found: {}:", tenant, configuration.logPayload);
-                rt = configuration;
+                if (optionRepresentation.getValue() == null) {
+                    rt = initialize(tenant);
+                } else {
+                    rt = new ObjectMapper().readValue(optionRepresentation.getValue(),
+                            ServiceConfiguration.class);
+                }
+                log.debug("Tenant {} - Returning service configuration found: {}:", tenant, rt.logPayload);
                 log.info("Tenant {} - Found connection configuration: {}", tenant, rt);
             } catch (SDKException exception) {
                 log.warn("Tenant {} - No configuration found, returning empty element!", tenant);
-                // exception.printStackTrace();
+                rt = initialize(tenant);
             } catch (JsonMappingException e) {
                 e.printStackTrace();
             } catch (JsonProcessingException e) {
@@ -97,12 +98,19 @@ public class ServiceConfigurationComponent {
         return result;
     }
 
-    public void deleteAllConfiguration() {
-        final OptionPK optionPK = new OptionPK();
-        optionPK.setCategory(OPTION_CATEGORY_CONFIGURATION);
-        optionPK.setKey(OPTION_KEY_CONNECTION_CONFIGURATION);
+    public void deleteServiceConfigurations(String tenant) {
+        OptionPK optionPK = new OptionPK(OPTION_CATEGORY_CONFIGURATION, OPTION_KEY_SERVICE_CONFIGURATION);
         tenantOptionApi.delete(optionPK);
-        optionPK.setKey(OPTION_KEY_SERVICE_CONFIGURATION);
-        tenantOptionApi.delete(optionPK);
+    }
+
+    public ServiceConfiguration initialize(String tenant) {
+        ServiceConfiguration configuration = new ServiceConfiguration();
+        try {
+            saveServiceConfiguration(configuration);
+        } catch (JsonProcessingException e) {
+            log.warn("Tenant {} - failed to initializes ServiceConfiguration!", tenant);
+            e.printStackTrace();
+        }
+        return configuration;
     }
 }

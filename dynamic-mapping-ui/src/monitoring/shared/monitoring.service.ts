@@ -18,51 +18,48 @@
  *
  * @authors Christof Strack
  */
-import { Injectable } from "@angular/core";
-import { FetchClient, InventoryService, Realtime } from "@c8y/client";
-import { BehaviorSubject, Observable } from "rxjs";
-import { MAPPING_STATUS_FRAGMENT, MappingStatus } from "../../shared";
-import { BrokerConfigurationService } from "../../configuration";
+import { Injectable } from '@angular/core';
+import { FetchClient, InventoryService, Realtime } from '@c8y/client';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { MAPPING_FRAGMENT, MappingStatus, SharedService } from '../../shared';
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class MonitoringService {
   constructor(
     private client: FetchClient,
     private inventory: InventoryService,
-    private brokerConfigurationService: BrokerConfigurationService
+    private sharedService: SharedService
   ) {
     this.realtime = new Realtime(this.client);
   }
-  private realtime: Realtime;
-  private mappingStatus = new BehaviorSubject<MappingStatus[]>([]);
-  private _currentMappingStatus = this.mappingStatus.asObservable();
 
-  public getCurrentMappingStatus(): Observable<MappingStatus[]> {
-    return this._currentMappingStatus;
+  private realtime: Realtime;
+  private mappingStatus$ = new BehaviorSubject<MappingStatus[]>([]);
+
+  getCurrentMappingStatus(): Observable<MappingStatus[]> {
+    return this.mappingStatus$;
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
-    const agentId =
-      await this.brokerConfigurationService.getDynamicMappingServiceAgent();
-    console.log("Start subscription for monitoring:", agentId);
+    const agentId = await this.sharedService.getDynamicMappingServiceAgent();
+    console.log('Start subscription for monitoring:', agentId);
 
-    let { data, res } = await this.inventory.detail(agentId);
-    let monitoring: MappingStatus[] = data[MAPPING_STATUS_FRAGMENT];
-    this.mappingStatus.next(monitoring);
+    const { data } = await this.inventory.detail(agentId);
+    const monitoring: MappingStatus[] = data[MAPPING_FRAGMENT];
+    this.mappingStatus$.next(monitoring);
     return this.realtime.subscribe(
       `/managedobjects/${agentId}`,
       this.updateStatus.bind(this)
     );
   }
 
-  unsubscribeFromMonitoringChannel(subscription: object) {
+  unsubscribeFromMonitoringChannel(subscription: any) {
     this.realtime.unsubscribe(subscription);
   }
 
   private updateStatus(p: object): void {
-    let payload = p["data"]["data"];
-    let monitoring: MappingStatus[] = payload[MAPPING_STATUS_FRAGMENT];
-    this.mappingStatus.next(monitoring);
-    console.log("New statusMonitoring event", monitoring);
+    const payload = p['data']['data'];
+    const monitoring: MappingStatus[] = payload[MAPPING_FRAGMENT];
+    this.mappingStatus$.next(monitoring);
   }
 }

@@ -21,7 +21,6 @@
 
 package dynamic.mapping.processor.extension;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dynamic.mapping.connector.core.callback.ConnectorMessage;
 import dynamic.mapping.model.Extension;
 import dynamic.mapping.model.ExtensionEntry;
@@ -30,20 +29,19 @@ import dynamic.mapping.processor.ProcessingException;
 import dynamic.mapping.processor.inbound.BasePayloadProcessorInbound;
 import dynamic.mapping.processor.model.ProcessingContext;
 import lombok.extern.slf4j.Slf4j;
-import dynamic.mapping.core.C8YAgent;
+import dynamic.mapping.core.ConfigurationRegistry;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-//@Service
 public class ExtensibleProcessorInbound extends BasePayloadProcessorInbound<byte[]> {
 
     private Map<String, Extension> extensions = new HashMap<>();
 
-    public ExtensibleProcessorInbound(ObjectMapper objectMapper, C8YAgent c8yAgent, String tenant) {
-        super(objectMapper, c8yAgent, tenant);
+    public ExtensibleProcessorInbound(ConfigurationRegistry configurationRegistry) {
+        super(configurationRegistry);
     }
 
     @Override
@@ -57,22 +55,26 @@ public class ExtensibleProcessorInbound extends BasePayloadProcessorInbound<byte
     public void extractFromSource(ProcessingContext<byte[]> context)
             throws ProcessingException {
         ProcessorExtensionInbound extension = null;
+        String tenant = context.getTenant();
         try {
             extension = getProcessorExtension(context.getMapping().extension);
             if (extension == null) {
-                String message = String.format("Extension %s:%s could not be found!",
+                log.info("Tenant {} - extractFromSource ******* {}", tenant, this);
+                logExtensions(tenant);
+                String message = String.format("Tenant %s - Extension %s:%s could not be found!", tenant,
                         context.getMapping().extension.getName(),
                         context.getMapping().extension.getEvent());
-                log.warn("Extension {}:{} could not be found!",
+                log.warn("Tenant {} - Extension {}:{} could not be found!", tenant,
                         context.getMapping().extension.getName(),
                         context.getMapping().extension.getEvent());
                 throw new ProcessingException(message);
             }
         } catch (Exception ex) {
-            String message = String.format("Extension %s:%s could not be found!",
+            String message = String.format("Tenant %s - Extension %s:%s could not be found!", tenant,
                     context.getMapping().extension.getName(),
                     context.getMapping().extension.getEvent());
-            log.warn("Extension {}:{} could not be found!", context.getMapping().extension.getName(),
+            log.warn("Tenant {} - Extension {}:{} could not be found!", tenant,
+                    context.getMapping().extension.getName(),
                     context.getMapping().extension.getEvent());
             throw new ProcessingException(message);
         }
@@ -93,24 +95,36 @@ public class ExtensibleProcessorInbound extends BasePayloadProcessorInbound<byte
         return extensions;
     }
 
-    public void addExtensionEntry(String extensionName, ExtensionEntry entry) {
-        Extension ext = extensions.get(extensionName);
-        if (ext == null) {
-            log.warn("Create new extension first!");
-        } else {
-            ext.getExtensionEntries().put(entry.getEvent(), entry);
+    private void logExtensions(String tenant) {
+        log.info("Tenant {} - Logging content ...", tenant);
+        for (Map.Entry<String, Extension> entryExtension : extensions.entrySet()) {
+            String extensionKey = entryExtension.getKey();
+            Extension extension = entryExtension.getValue();
+            log.info("Tenant {} - Extension {}:{} found contains: ", tenant, extensionKey,
+                    extension.getName());
+            for (Map.Entry<String, ExtensionEntry> entryExtensionEntry : extension.getExtensionEntries().entrySet()) {
+                String extensionEntryKey = entryExtensionEntry.getKey();
+                ExtensionEntry extensionEntry = entryExtensionEntry.getValue();
+                log.info("Tenant {} - ExtensionEntry {}:{} found : ", tenant, extensionEntryKey,
+                        extensionEntry.getEvent());
+            }
         }
     }
 
-    public void addExtension(String id, String extensionName, boolean external) {
-        Extension ext = extensions.get(extensionName);
-        if (ext != null) {
-            log.warn("Extension with this name {} already exits, override existing extension!",
-                    extensionName);
+    public void addExtensionEntry(String tenant, String extensionName, ExtensionEntry entry) {
+        if (!extensions.containsKey(extensionName)) {
+            log.warn("Tenant {} - Cannot add extension entry. Create first an extension!", tenant);
         } else {
-            ext = new Extension(id, extensionName, external);
-            extensions.put(extensionName, ext);
+            extensions.get(extensionName).getExtensionEntries().put(entry.getEvent(), entry);
         }
+    }
+
+    public void addExtension(String tenant, Extension extension) {
+        if (extensions.containsKey(extension.getName())) {
+            log.warn("Tenant {} - Extension with this name {} already exits, override existing extension!", tenant,
+                    extension.getName());
+        }
+        extensions.put(extension.getName(), extension);
     }
 
     public Extension deleteExtension(String extensionName) {

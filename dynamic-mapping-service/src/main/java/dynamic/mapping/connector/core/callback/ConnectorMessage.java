@@ -1,22 +1,26 @@
 package dynamic.mapping.connector.core.callback;
 
+import javax.validation.constraints.NotNull;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
 public class ConnectorMessage {
-    byte[] payload;
-    String[] headers;
+    private byte[] payload;
 
-    public byte[] getPayload() {
-        return payload;
-    }
+    private String[] headers;
 
-    public void setPayload(byte[] payload) {
-        this.payload = payload;
-    }
+    @NotNull
+    private String tenant;
 
-    public String[] getHeaders() {
-        return headers;
-    }
+    private String topic;
+    
+    @NotNull
+    private String connectorIdent;
 
-    public void setHeaders(String[] headers) {
-        this.headers = headers;
-    }
+    private boolean sendPayload;
 }

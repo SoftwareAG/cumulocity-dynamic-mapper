@@ -19,24 +19,40 @@
   ~ @authors Christof Strack
   -->
 
-<c8y-title>Dynamic Mapping</c8y-title>
+<c8y-title>Broker Configuration</c8y-title>
 <c8y-action-bar-item [placement]="'right'">
   <button
     class="btn btn-link"
+    title="{{ 'Reconnect Notification Endpoint' | translate }}"
+    (click)="clickedReconnect2NotificationEnpoint()"
+  >
+    <i c8yIcon="disconnected"></i>
+    {{ 'Reconnect Notification Endpoint' | translate }}
+  </button>
+  <button
+    class="btn btn-link"
+    title="{{ 'Reset Monitoring' | translate }}"
+    (click)="resetStatusMapping()"
+  >
+    <i c8yIcon="reset"></i>
+    {{ 'Reset Monitoring' | translate }}
+  </button>
+  <button
+    class="btn btn-link"
     title="{{ 'Refresh' | translate }}"
-    (click)="loadData()"
+    (click)="refresh()"
   >
     <i c8yIcon="refresh"></i>
-    {{ "Refresh" | translate }}
+    {{ 'Refresh' | translate }}
   </button>
 </c8y-action-bar-item>
 
 <div class="d-flex flex-wrap">
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header separator j-c-between">
+      <div class="card-header p-l-32 separator j-c-between">
         <h4 class="card-title">
-          {{ "Configured Brokers" | translate }}
+          {{ 'Configured Brokers' | translate }}
         </h4>
       </div>
       <div class="card-block">
@@ -54,13 +70,12 @@
             </button>
           </div>
         </div>
-
-        <div style="height: 200px; overflow-y: auto">
+        <div style="xheight: 200px; overflow-y: auto">
           <table class="table table-condensed table-striped fixTableHead">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Connector Id</th>
+                <th>Type</th>
                 <th>Name</th>
                 <th>Enabled</th>
                 <th>Status</th>
@@ -73,19 +88,15 @@
                   {{ i }}
                 </td>
                 <td width="10%" style="padding-top: 12px">
-                  <span class="text-12"
-                    >{{ con.configuration?.connectorId }}
-                  </span>
+                  <span class="text-12">{{ con?.connectorType }} </span>
                 </td>
                 <td width="40%" style="padding-top: 12px">
-                  {{ con.configuration?.name }}
+                  {{ con?.name }}
                 </td>
                 <td width="5%" style="padding-top: 12px">
                   <i
                     style="text-align: center; width: 100%"
-                    [c8yIcon]="
-                      !con.configuration?.enabled ? 'circle-o' : 'plus-circle-o'
-                    "
+                    [c8yIcon]="!con?.enabled ? 'circle-o' : 'plus-circle-o'"
                     class="m-r-5"
                   ></i>
                 </td>
@@ -94,64 +105,177 @@
                     <span
                       class="c8y-pulse animated pulse animation-slow"
                       [ngClass]="{
-                        active: (con.status$ | async) == 'CONNECTED',
-                        inactive: (con.status$ | async) != 'CONNECTED'
+                        active: (con.status$ | async) === 'CONNECTED',
+                        inactive: (con.status$ | async) !== 'CONNECTED'
                       }"
                     ></span
                     >{{ con.status$ | async }}
                   </div>
                 </td>
-                <td width="20%">
-                  <button
-                    title="{{ 'Remove' | translate }}"
-                    class="btn btn-icon btn-clean p-r-4"
-                    (click)="onConfigurationDelete(i)"
-                    [disabled]="con.configuration?.enabled"
-                  >
-                    <i c8yIcon="trash-o" class="text-danger"></i>
-                    <span class="sr-only" translate>Remove configuration</span>
-                  </button>
-                  <button
-                  title="{{ 'Update' | translate }}"
-                  class="btn btn-icon btn-clean p-r-4"
-                  (click)="onConfigurationUpdate(i)"
-                  >
-                  <i c8yIcon="pencil" class="text-danger"></i>
-                  <span class="sr-only" translate>Update configuration</span>
-                </button>
-                <button
-                  title="{{ 'Toggle Activation' | translate }}"
-                  class="btn btn-icon btn-clean"
-                  (click)="onConfigurationToogle(i)"
-                >
-                  <i c8yIcon="toggle-on" class="text-danger"></i>
-                  <span class="sr-only" translate>Toogle activation</span>
-                </button>
+                <td width="10%">
+                  <div class="d-flex" style="position: absolute">
+                    <button
+                      container="body"
+                      style="padding-bottom: 6px"
+                      title="{{ 'Toggle Activation' | translate }}"
+                      class="btn btn-dot"
+                      (click)="onConfigurationToogle(i)"
+                    >
+                      <i c8yIcon="toggle-on"></i>
+                    </button>
+                    <div placement="bottom right" class="dropdown" dropdown>
+                      <button
+                        type="button"
+                        style="padding-top: 6px"
+                        title="Actions"
+                        dropdownToggle
+                        class="dropdown-toggle c8y-dropdown"
+                      >
+                        <i c8yIcon="ellipsis-v"></i>
+                      </button>
+                      <ul
+                        class="dropdown-menu dropdown-menu-right"
+                        *dropdownMenu
+                      >
+                        <li>
+                          <button
+                            type="button"
+                            (click)="onConfigurationUpdate(i)"
+                          >
+                            <i c8yIcon="pencil"></i>
+                            Update configuration
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            type="button"
+                            (click)="onConfigurationCopy(i)"
+                          >
+                            <i c8yIcon="copy"></i>
+                            Copy configuration
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            type="button"
+                            (click)="onConfigurationDelete(i)"
+                            [disabled]="con?.enabled"
+                          >
+                            <i c8yIcon="trash-o"></i>
+                            Remove configuration
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="col-lg-6">
-    <div class="card" *ngIf="feature?.outputMappingEnabled">
-      <div class="card-header separator j-c-between">
-        <h4 class="card-title">Cumulocity Notification Endpoint</h4>
-      </div>
-      <div class="inner-scroll">
-        <div class="card-footer">
-          <div class="form-group">
-            <button
-              type="button"
-              name="update"
-              class="btn btn-primary"
-              (click)="clickedReconnect2NotificationEnpoint()"
-              translate
+
+      <div class="legend form-block col-lg-12">Connector Logs</div>
+      <div class="card-block">
+        <c8y-form-group>
+          <form class="form-inline">
+            <!-- <label
+              class="c8y-radio radio-inline"
+              title="{{ 'Connector Lifecycle' }}"
             >
-              Reconnect
+              <input
+                type="radio"
+                checked="checked"
+                name="c8y-group"
+                value="{{ StatusEventTypes.STATUS_CONNECTOR_EVENT_TYPE }}"
+                [(ngModel)]="filterStatusLog.eventType"
+              />
+              <span></span>
+              <span>Connector Lifecycle</span>
+            </label>
+            <label
+              class="c8y-radio radio-inline"
+              title="{{ 'Connector Lifecycle' }}"
+            >
+              <input
+                type="radio"
+                checked="checked"
+                name="c8y-group"
+                value="{{ StatusEventTypes.STATUS_SUBSCRIPTION_EVENT_TYPE }}"
+                [(ngModel)]="filterStatusLog.eventType"
+              />
+              <span></span>
+              <span>Subscriptions Events</span>
+            </label> -->
+            <div class="c8y-select-wrapper button-bottom-margin">
+              <select
+                class="form-control"
+                style="width: 180px"
+                [(ngModel)]="filterStatusLog.eventType"
+                name="eventType"
+              >
+                <option [value]="'ALL'">ALL types</option>
+                <option [value]="StatusEventTypes.STATUS_CONNECTOR_EVENT_TYPE">Connector Lifecycle</option>
+                <option [value]="StatusEventTypes.STATUS_SUBSCRIPTION_EVENT_TYPE">Subscriptions Events</option>
+                <option [value]="StatusEventTypes.STATUS_NOTIFICATION_EVENT_TYPE">Notification Lifecycle</option>
+              </select>
+            </div>
+            <div class="c8y-select-wrapper button-bottom-margin m-l-16">
+              <select
+                class="form-control"
+                style="width: 180px"
+                [(ngModel)]="filterStatusLog.connectorIdent"
+                name="connectorIdent"
+              >
+                <option [value]="'ALL'">ALL configurations</option>
+                <option [value]="t.ident" *ngFor="let t of configurations">
+                  {{ t.name }}
+                </option>
+              </select>
+            </div>
+            <button
+              type="submit"
+              (click)="updateStatusLogs()"
+              class="btn btn-default btn-sm m-b-8 m-l-16"
+            >
+              Update
             </button>
+          </form>
+        </c8y-form-group>
+        <div style="height: 340px; overflow: auto">
+          <!-- <c8y-ui-empty-state *ngIf="(statusLogs)?.length === 0"
+            [icon]="'event'"
+            [title]="'No logs found.' | translate"
+            [horizontal]="true"
+          ></c8y-ui-empty-state> -->
+          <div class="timeline-list list-condensed">
+            <div
+              class="timeline-list-item d-flex"
+              *ngFor="let event of statusLogs"
+            >
+              <small class="timeline-item-date">
+                {{ event.date | date: 'dd.MM.yy hh:mm:ss' }}
+              </small>
+              <div class="timeline-item-content d-flex flex-wrap">
+                <div class="list-item-icon">
+                  <i c8yIcon="c8y-events"></i>
+                </div>
+                <div class="list-item-body">
+                  <div class="row">
+                    <div class="col-lg-12">
+                      <label class="small" translate>Status&nbsp;</label>
+                      <span>{{ event.status }}</span>
+                      <label class="small" translate
+                        >&nbsp;&nbsp;Connector&nbsp;</label
+                      >
+                      <span>{{ event.connectorName }}</span>
+                      <br />
+                      <span>{{ event.message }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -159,61 +283,105 @@
   </div>
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header separator j-c-between">
+      <div class="card-header p-l-32 separator j-c-between">
         <h4 class="card-title">
-          {{ "Service Configuration" | translate }}
+          {{ 'Service Configuration' | translate }}
         </h4>
-        <div class="c8y-realtime">
-          <span
-            class="c8y-pulse animated pulse animation-slow"
-            [ngClass]="{
-              active: isBrokerAgentCreated$ | async,
-              inactive: !isBrokerAgentCreated$ | async
-            }"
-          ></span>
-          {{ "Dynamic Mapping Service installed" | translate }}
-        </div>
       </div>
       <div class="inner-scroll">
         <div class="card-block">
           <div [formGroup]="serviceForm">
-            <c8y-form-group>
-              <div class="row">
-                <div class="col-lg-6">
-                  <label
-                    class="c8y-switch"
-                    title="{{ 'Log payload in Backend' | translate }}"
-                  >
-                    <input
-                      type="checkbox"
-                      formControlName="logPayload"
-                      [(ngModel)]="serviceConfiguration.logPayload"
-                      #useTLSRef
-                    />
-                    <span></span>
-                    <span>
-                      {{ "Log Payload" }}
-                    </span>
-                  </label>
-                </div>
-                <div class="col-lg-6">
-                  <label
-                    class="c8y-switch"
-                    title="{{ 'Log substitution in Backend' | translate }}"
-                  >
-                    <input
-                      type="checkbox"
-                      formControlName="logSubstitution"
-                      [(ngModel)]="serviceConfiguration.logSubstitution"
-                      #useTLSRef
-                    />
-                    <span></span>
-                    <span>
-                      {{ "Log Substitution" }}
-                    </span>
-                  </label>
-                </div>
-              </div>
+            <c8y-form-group class="m-b-0">
+              <label class="c8y-checkbox">
+                <input
+                  type="checkbox"
+                  formControlName="logPayload"
+                  [(ngModel)]="serviceConfiguration.logPayload"
+                />
+                <span></span>
+                <span>
+                  {{ 'Log Payload' }}
+                </span>
+              </label>
+            </c8y-form-group>
+            <c8y-form-group class="m-b-0">
+              <label class="c8y-checkbox">
+                <input
+                  type="checkbox"
+                  formControlName="logSubstitution"
+                  [(ngModel)]="serviceConfiguration.logSubstitution"
+                />
+                <span></span>
+                <span>
+                  {{ 'Log Substitution' }}
+                </span>
+              </label>
+            </c8y-form-group>
+            <c8y-form-group class="m-b-0">
+              <label class="c8y-checkbox">
+                <input
+                  type="checkbox"
+                  formControlName="logConnectorErrorInBackend"
+                  [(ngModel)]="serviceConfiguration.logConnectorErrorInBackend"
+                />
+                <span></span>
+                <span>
+                  {{ 'Log Connector Errors' }}
+                </span>
+              </label>
+            </c8y-form-group>
+            <c8y-form-group class="m-b-0">
+              <label class="c8y-checkbox">
+                <input
+                  type="checkbox"
+                  formControlName="sendConnectorLifecycle"
+                  [(ngModel)]="serviceConfiguration.sendConnectorLifecycle"
+                />
+                <span></span>
+                <span>
+                  {{ 'Send Connector Lifcycle' }} <i c8yIcon="euro"></i>
+                </span>
+              </label>
+            </c8y-form-group>
+            <c8y-form-group class="m-b-0">
+              <label class="c8y-checkbox">
+                <input
+                  type="checkbox"
+                  formControlName="sendMappingStatus"
+                  [(ngModel)]="serviceConfiguration.sendMappingStatus"
+                />
+                <span></span>
+                <span>
+                  {{ 'Send Mapping Status' }} <i c8yIcon="euro"></i>
+                </span>
+              </label>
+            </c8y-form-group>
+            <c8y-form-group class="m-b-0">
+              <label class="c8y-checkbox">
+                <input
+                  type="checkbox"
+                  formControlName="sendSubscriptionEvents"
+                  [(ngModel)]="serviceConfiguration.sendSubscriptionEvents"
+                />
+                <span></span>
+                <span>
+                  {{ 'Send Events on Topic Subscriptions' }}
+                  <i c8yIcon="euro"></i>
+                </span>
+              </label>
+            </c8y-form-group>
+            <c8y-form-group class="m-b-0">
+              <label class="c8y-checkbox">
+                <input
+                  type="checkbox"
+                  formControlName="sendNotificationLifecycle"
+                  [(ngModel)]="serviceConfiguration.sendNotificationLifecycle"
+                />
+                <span></span>
+                <span>
+                  {{ 'Send Notification Lifcycle' }} <i c8yIcon="euro"></i>
+                </span>
+              </label>
             </c8y-form-group>
           </div>
         </div>
@@ -227,30 +395,6 @@
               translate
             >
               Save
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-6">
-    <div class="card" *ngIf="feature?.outputMappingEnabled">
-      <div class="card-header separator j-c-between">
-        <h4 class="card-title">
-          {{ "Mapping Monitoring" | translate }}
-        </h4>
-      </div>
-      <div class="inner-scroll">
-        <div class="card-footer">
-          <div class="form-group">
-            <button
-              type="button"
-              name="update"
-              class="btn btn-primary"
-              (click)="resetStatusMapping()"
-              translate
-            >
-              Reset Monitoring
             </button>
           </div>
         </div>

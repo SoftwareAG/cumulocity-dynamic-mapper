@@ -48,7 +48,7 @@
     </d11r-mapping-properties>
     <c8y-stepper-buttons
       class="d-block card-footer p-24 separator"
-      (onCancel)="onCancel.emit()"
+      (onCancel)="cancel.emit()"
       (onNext)="onNextStep($event)"
       [labels]="{ next: 'Next', cancel: 'Cancel' }"
     >
@@ -83,8 +83,8 @@
                           [attr.disabled]="
                             isDisabled(
                               !stepperConfiguration.showEditorSource ||
-                                mapping.snoopedTemplates.length == 0 ||
-                                stepperConfiguration.editorMode ==
+                                mapping.snoopedTemplates.length === 0 ||
+                                stepperConfiguration.editorMode ===
                                   EditorMode.READ_ONLY
                             )
                           "
@@ -119,16 +119,14 @@
                       [options]="editorOptionsSource"
                       [class]="'jse-main-small'"
                       (pathChanged)="onSelectedPathSourceChanged($event)"
-                      (initialized)="onEditorSourceInitialized($event)"
+                      (initialized)="onEditorSourceInitialized()"
                       [data]="templateSource"
                       #editorSource
                       id="editorSource"
                     ></d11r-mapping-json-editor2>
                     <c8y-messages class="text-left">
                       <c8y-message
-                        *ngIf="
-                          templateModel.currentSubstitution.pathSource == ''
-                        "
+                        *ngIf="substitutionModel.pathSource === ''"
                         translate
                         ><span class="text-warning"
                           >Select source node to define substitution!</span
@@ -160,7 +158,7 @@
                         <option
                           *ngFor="let ex of extensions | keyvalue"
                           [ngValue]="ex.key"
-                          [selected]="ex.key == mapping.extension?.name"
+                          [selected]="ex.key === mapping.extension?.name"
                         >
                           {{ ex.key }}
                         </option>
@@ -190,11 +188,25 @@
                         <option
                           *ngFor="let ev of extensionEvents$ | async"
                           [ngValue]="ev"
-                          [selected]="ev == mapping.extension?.event"
+                          [selected]="ev === mapping.extension?.event"
                         >
                           {{ ev }}
                         </option>
                       </select>
+                    </div>
+                  </div>
+                  <div
+                    *ngIf="
+                      !stepperConfiguration.showEditorSource &&
+                      !stepperConfiguration.showProcessorExtensions
+                    "
+                  >
+                    <label>Template Source - {{ sourceSystem }}</label>
+                    <div class="p-t-48">
+                      <span
+                        >Template is described internally by the choosen mapping
+                        type</span
+                      >
                     </div>
                   </div>
                 </div>
@@ -233,7 +245,7 @@
                           [attr.disabled]="
                             isDisabled(
                               !stepperConfiguration.showEditorSource ||
-                                stepperConfiguration.editorMode ==
+                                stepperConfiguration.editorMode ===
                                   EditorMode.READ_ONLY
                             )
                           "
@@ -262,7 +274,7 @@
                       [options]="editorOptionsTarget"
                       [class]="'jse-main-small'"
                       (pathChanged)="onSelectedPathTargetChanged($event)"
-                      (initialized)="onEditorTargetInitialized($event)"
+                      (initialized)="onEditorTargetInitialized()"
                       [data]="templateTarget"
                       #editorTarget
                       id="editorTarget"
@@ -270,9 +282,7 @@
                     </d11r-mapping-json-editor2>
                     <c8y-messages class="text-right">
                       <c8y-message
-                        *ngIf="
-                          templateModel.currentSubstitution.pathTarget == ''
-                        "
+                        *ngIf="substitutionModel.pathTarget === ''"
                         translate
                         ><span class="text-warning"
                           >Select target node to define substitution!</span
@@ -283,18 +293,13 @@
                 </div>
               </div>
             </div>
-            <div [formGroup]="templateFormly">
+            <div [formGroup]="substitutionFormly">
               <div class="row">
                 <formly-form
-                  [form]="templateFormly"
-                  [fields]="templateFormlyFields"
-                  [model]="templateModel"
+                  [form]="substitutionFormly"
+                  [fields]="substitutionFormlyFields"
+                  [model]="substitutionModel"
                 ></formly-form>
-              </div>
-            </div>
-            <div [formGroup]="templateForm">
-              <div class="legend form-block col-lg-10 col-lg-offset-1">
-                Substitutions
               </div>
               <div class="row">
                 <div class="col-lg-2 col-lg-offset-1">
@@ -308,7 +313,7 @@
                     [attr.disabled]="
                       isDisabled(
                         !stepperConfiguration.showEditorSource ||
-                          stepperConfiguration.editorMode ==
+                          stepperConfiguration.editorMode ===
                             EditorMode.READ_ONLY ||
                           !isSubstitutionValid()
                       )
@@ -328,9 +333,9 @@
                     [attr.disabled]="
                       isDisabled(
                         !stepperConfiguration.showEditorSource ||
-                          stepperConfiguration.editorMode ==
+                          stepperConfiguration.editorMode ===
                             EditorMode.READ_ONLY ||
-                          selectedSubstitution == -1 ||
+                          selectedSubstitution === -1 ||
                           !isSubstitutionValid()
                       )
                     "
@@ -340,6 +345,12 @@
                   </button>
                 </div>
               </div>
+            </div>
+            <div [formGroup]="templateForm">
+              <div class="legend form-block col-lg-10 col-lg-offset-1">
+                Substitutions
+              </div>
+
               <div class="row">
                 <div class="col-lg-10 col-lg-offset-1">
                   <div style="min-height: 32px">
@@ -352,16 +363,16 @@
                         editorMode: stepperConfiguration.editorMode
                       }"
                       [direction]="mapping.direction"
-                      (onSelect)="onSelectSubstitution($event)"
-                      (onDelete)="onDeleteSubstitution($event)"
-                      (onEdit)="onUpdateSubstitution()"
+                      (selectSub)="onSelectSubstitution($event)"
+                      (deleteSub)="onDeleteSubstitution($event)"
+                      (editSub)="onUpdateSubstitution()"
                     >
                     </d11r-mapping-substitution-renderer>
                   </div>
                   <c8y-messages class="text-right">
                     <c8y-message
                       *ngIf="
-                        (countDeviceIdentifers$ | async) != 1 &&
+                        (countDeviceIdentifers$ | async) !== 1 &&
                         !stepperConfiguration.allowNoDefinedIdentifier
                       "
                     >
@@ -380,7 +391,7 @@
     </div>
     <c8y-stepper-buttons
       class="col-xs-12 d-block card-footer p-24 separator"
-      (onCancel)="onCancel.emit()"
+      (onCancel)="cancel.emit()"
       (onNext)="onNextStep($event)"
       (onBack)="onBackStep($event)"
       [labels]="{ next: 'Next', cancel: 'Cancel' }"

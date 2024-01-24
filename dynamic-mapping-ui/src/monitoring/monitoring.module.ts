@@ -19,22 +19,36 @@
  * @authors Christof Strack
  */
 
-import { NgModule } from "@angular/core";
-import { CoreModule, hookRoute } from "@c8y/ngx-components";
-import { MonitoringComponent } from "./grid/monitoring.component";
-import { IdRendererComponent } from "./renderer/id-cell.renderer.component";
-import { BrokerConfigurationModule } from "../configuration/broker-configuration.module";
+import { NgModule } from '@angular/core';
+import { CoreModule, hookRoute, hookTab } from '@c8y/ngx-components';
+import { MonitoringComponent } from './grid/monitoring.component';
+import { IdRendererComponent } from './renderer/id-cell.renderer.component';
+import { BrokerConfigurationModule } from '../configuration';
+import { NumberRendererComponent } from './renderer/number.renderer.component';
+import { DirectionRendererComponent } from './renderer/direction.renderer.component';
+import { MonitoringChartComponent } from './chart/chart.component';
+import { MonitoringTabFactory } from './monitoring-tab.factory';
 
 @NgModule({
-  declarations: [MonitoringComponent, IdRendererComponent],
+  declarations: [
+    MonitoringComponent,
+    IdRendererComponent,
+    NumberRendererComponent,
+    DirectionRendererComponent,
+    MonitoringChartComponent
+  ],
   imports: [CoreModule, BrokerConfigurationModule],
-  entryComponents: [IdRendererComponent],
   exports: [],
   providers: [
     hookRoute({
-      path: "sag-ps-pkg-dynamic-mapping/monitoring",
-      component: MonitoringComponent,
+      path: 'sag-ps-pkg-dynamic-mapping/monitoring/grid',
+      component: MonitoringComponent
     }),
-  ],
+    hookRoute({
+      path: 'sag-ps-pkg-dynamic-mapping/monitoring/chart',
+      component: MonitoringChartComponent
+    }),
+    hookTab(MonitoringTabFactory)
+  ]
 })
 export class MonitoringModule {}
