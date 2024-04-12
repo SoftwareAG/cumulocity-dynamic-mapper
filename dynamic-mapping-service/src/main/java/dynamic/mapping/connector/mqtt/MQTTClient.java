@@ -31,6 +31,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -75,21 +76,32 @@ import dynamic.mapping.core.ConnectorStatus;
 public class MQTTClient extends AConnectorClient {
     public MQTTClient() {
         Map<String, ConnectorProperty> configProps = new HashMap<>();
-        configProps.put("mqttHost", new ConnectorProperty(true, 0, ConnectorPropertyType.STRING_PROPERTY, true, null));
-        configProps.put("mqttPort", new ConnectorProperty(true, 1, ConnectorPropertyType.NUMERIC_PROPERTY, true, null));
-        configProps.put("user", new ConnectorProperty(false, 2, ConnectorPropertyType.STRING_PROPERTY, true, null));
+        configProps.put("protocol",
+        new ConnectorProperty(true, 0, ConnectorPropertyType.OPTION_PROPERTY, true, "mqtt://", Map.ofEntries(
+                new AbstractMap.SimpleEntry<String, String>("mqtt://", "mqtt://"),
+                new AbstractMap.SimpleEntry<String, String>("mqtts://", "mqtts://"),
+                new AbstractMap.SimpleEntry<String, String>("ws://", "ws://"),
+                new AbstractMap.SimpleEntry<String, String>("wss://", "wss://"))));
+        configProps.put("mqttHost",
+                new ConnectorProperty(true, 1, ConnectorPropertyType.STRING_PROPERTY, true, null, null));
+        configProps.put("mqttPort",
+                new ConnectorProperty(true, 2, ConnectorPropertyType.NUMERIC_PROPERTY, true, null, null));
+        configProps.put("user",
+                new ConnectorProperty(false, 3, ConnectorPropertyType.STRING_PROPERTY, true, null, null));
         configProps.put("password",
-                new ConnectorProperty(false, 3, ConnectorPropertyType.SENSITIVE_STRING_PROPERTY, true, null));
-        configProps.put("clientId", new ConnectorProperty(true, 4, ConnectorPropertyType.STRING_PROPERTY, true, null));
-        configProps.put("useTLS", new ConnectorProperty(false, 5, ConnectorPropertyType.BOOLEAN_PROPERTY, true, null));
+                new ConnectorProperty(false, 4, ConnectorPropertyType.SENSITIVE_STRING_PROPERTY, true, null, null));
+        configProps.put("clientId",
+                new ConnectorProperty(true, 5, ConnectorPropertyType.STRING_PROPERTY, true, null, null));
         configProps.put("useSelfSignedCertificate",
-                new ConnectorProperty(false, 6, ConnectorPropertyType.BOOLEAN_PROPERTY, true, null));
+                new ConnectorProperty(false, 6, ConnectorPropertyType.BOOLEAN_PROPERTY, true, null, null));
         configProps.put("fingerprintSelfSignedCertificate",
-                new ConnectorProperty(false, 7, ConnectorPropertyType.STRING_PROPERTY, true, null));
-        configProps.put("nameCertificate", new ConnectorProperty(false, 8, ConnectorPropertyType.STRING_PROPERTY, true, null));
+                new ConnectorProperty(false, 7, ConnectorPropertyType.STRING_PROPERTY, true, null, null));
+        configProps.put("nameCertificate",
+                new ConnectorProperty(false, 8, ConnectorPropertyType.STRING_PROPERTY, true, null, null));
         configProps.put("supportsWildcardInTopic",
-                new ConnectorProperty(false, 9, ConnectorPropertyType.BOOLEAN_PROPERTY, true, true));
-        configProps.put("useWSS", new ConnectorProperty(false, 10, ConnectorPropertyType.BOOLEAN_PROPERTY, true, null));
+                new ConnectorProperty(false, 9, ConnectorPropertyType.BOOLEAN_PROPERTY, true, true, null));
+        configProps.put("serverPath",
+                new ConnectorProperty(true, 10, ConnectorPropertyType.STRING_PROPERTY, true, "mqtt", null));
         spec = new ConnectorSpecification(connectorType, configProps);
     }
 
@@ -209,7 +221,7 @@ public class MQTTClient extends AConnectorClient {
         if (isConnected())
             disconnect();
 
-        boolean useTLS = (Boolean) connectorConfiguration.getProperties().getOrDefault("useTLS", false);
+        String protocol = (String) connectorConfiguration.getProperties().getOrDefault("protocol", false);
         boolean useSelfSignedCertificate = (Boolean) connectorConfiguration.getProperties()
                 .getOrDefault("useSelfSignedCertificate", false);
 
@@ -243,8 +255,17 @@ public class MQTTClient extends AConnectorClient {
         if (useSelfSignedCertificate) {
             partialBuilder = partialBuilder.sslConfig(sslConfig);
             log.debug("Tenant {} - Using certificate: {}", tenant, cert.getCertInPemFormat());
-        } else if (useTLS) {
+        } else if ("mqtts://".equals(protocol) || "wss://".equals(protocol)) {
             partialBuilder = partialBuilder.sslWithDefaultConfig();
+        }
+
+        // websocket configuration
+        if ("ws://".equals(protocol) || "wss://".equals(protocol)) {
+            String serverPath = (String) connectorConfiguration.getProperties().get("serverPath");
+            partialBuilder = partialBuilder.webSocketConfig()
+                    .serverPath(serverPath)
+                    .applyWebSocketConfig();
+            log.debug("Tenant {} - Using websocket: {}", tenant, serverPath);
         }
 
         // finally build mqttClient
@@ -262,6 +283,24 @@ public class MQTTClient extends AConnectorClient {
                 })
                 .buildBlocking();
 
+        String configuredProtocol = "mqtt";
+        String configuredServerPath = "";
+        if (mqttClient.getConfig().getWebSocketConfig().isPresent()) {
+            if (mqttClient.getConfig().getSslConfig().isPresent()) {
+                configuredProtocol = "wss";
+            } else {
+                configuredProtocol = "ws";
+            }
+            configuredServerPath = "/" + mqttClient.getConfig().getWebSocketConfig().get().getServerPath();
+        } else {
+            if (mqttClient.getConfig().getSslConfig().isPresent()) {
+                configuredProtocol = "mqtts";
+            } else {
+                configuredProtocol = "mqtt";
+            }
+        }
+        String configuredUrl = String.format("%s://%s:%s%s", configuredProtocol, mqttClient.getConfig().getServerHost(),
+                mqttClient.getConfig().getServerPort(), configuredServerPath);
         // Registering Callback
         Mqtt3AsyncClient mqtt3AsyncClient = mqttClient.toAsync();
         mqttCallback = new MQTTCallback(dispatcher, tenant, getConnectorIdent());
@@ -273,8 +312,8 @@ public class MQTTClient extends AConnectorClient {
             loadConfiguration();
             var firstRun = true;
             while (!isConnected() && shouldConnect()) {
-                log.info("Tenant {} - Establishing the MQTT connection now - phase II: {}", tenant,
-                        shouldConnect());
+                log.info("Tenant {} - Establishing the MQTT connection now - phase II: {} {}", tenant,
+                        shouldConnect(), configuredUrl);
                 if (!firstRun) {
                     try {
                         Thread.sleep(WAIT_PERIOD_MS);
@@ -303,8 +342,8 @@ public class MQTTClient extends AConnectorClient {
                     log.error("Tenant {} - Failed to connect to broker {}, {}, {}, {}", tenant,
                             mqttClient.getConfig().getServerHost(), e.getMessage(), connectionState.booleanValue(),
                             mqttClient.getState().isConnected());
-                            updateConnectorStatusToFailed(e);
-                            sendConnectorLifecycle();
+                    updateConnectorStatusToFailed(e);
+                    sendConnectorLifecycle();
                 }
                 firstRun = false;
             }
@@ -452,7 +491,8 @@ public class MQTTClient extends AConnectorClient {
         C8YRequest currentRequest = context.getCurrentRequest();
         String payload = currentRequest.getRequest();
         MqttQos mqttQos = MqttQos.fromCode(context.getQos().ordinal());
-        Mqtt3Publish mqttMessage = Mqtt3Publish.builder().topic(context.getResolvedPublishTopic()).qos(mqttQos).payload(payload.getBytes()).build();
+        Mqtt3Publish mqttMessage = Mqtt3Publish.builder().topic(context.getResolvedPublishTopic()).qos(mqttQos)
+                .payload(payload.getBytes()).build();
         mqttClient.publish(mqttMessage);
 
         log.info("Tenant {} - Published outbound message: {} for mapping: {} on topic: {}, {}", tenant, payload,
