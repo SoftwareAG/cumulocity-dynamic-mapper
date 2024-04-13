@@ -21,6 +21,18 @@
 
 package dynamic.mapping;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+
+import javax.net.ssl.TrustManagerFactory;
+
 import com.hivemq.client.mqtt.datatypes.MqttQos;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
 import com.hivemq.client.mqtt.mqtt3.Mqtt3BlockingClient;
@@ -34,7 +46,7 @@ import dynamic.mapping.processor.processor.fixed.StaticCustomMeasurementOuter.St
 
 public class ProtobufPahoClient {
     Mqtt3BlockingClient testClient;
-    static String broker_host = System.getenv("broker");
+    static String broker_host = System.getenv("broker_host");
     static Integer broker_port = Integer.valueOf(System.getenv("broker_port"));
     static String client_id = System.getenv("client_id");
     static String broker_username = System.getenv("broker_username");
@@ -44,8 +56,38 @@ public class ProtobufPahoClient {
         testClient = sampleClient;
     }
 
-    public static void main(String[] args) {
+    public static TrustManagerFactory buildTrustManagerFactoryFromJKS(
+            final Path truststorePath,
+            final String password) throws Exception {
 
+        final char[] checkedPassword = password.toCharArray();
+        final TrustManagerFactory trustManagerFactory = TrustManagerFactory
+                .getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        final KeyStore ks = KeyStore.getInstance("JKS");
+        ks.load(new FileInputStream(truststorePath.toFile()), checkedPassword);
+        trustManagerFactory.init(ks);
+        return trustManagerFactory;
+    }
+
+    public static void main(String[] args) throws KeyStoreException, NoSuchAlgorithmException, CertificateException,
+            FileNotFoundException, IOException {
+
+        System.out.println("Connecting with JKS tm, " + System.getProperties()
+        .getProperty("java.home"));
+
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        // load default jvm keystore
+        keyStore.load(new FileInputStream(
+                System.getProperties()
+                        .getProperty("java.home") + File.separator
+                        + "lib" + File.separator + "security" + File.separator
+                        + "cacerts"),
+                "changeit".toCharArray());
+
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+                TrustManagerFactory.getDefaultAlgorithm());
+
+        tmf.init(keyStore);
         Mqtt3SimpleAuth simpleAuth = Mqtt3SimpleAuth.builder().username(broker_username)
                 .password(broker_password.getBytes()).build();
         Mqtt3BlockingClient sampleClient = Mqtt3Client.builder()
@@ -54,18 +96,23 @@ public class ProtobufPahoClient {
                 .identifier(client_id)
                 .simpleAuth(simpleAuth)
                 .sslWithDefaultConfig()
+                // .sslConfig()
+                // .trustManagerFactory(tmf)
+                // .hostnameVerifier((hostname, session) -> true)
+                // .applySslConfig()
                 .buildBlocking();
         ProtobufPahoClient client = new ProtobufPahoClient(sampleClient);
+        client.testClient.connect();
         client.testSendMeasurement();
-        client.testSendAlarm();
-
+        // client.testSendAlarm();
+        client.testClient.disconnect();
     }
 
     private void testSendMeasurement() {
 
         String topic = "protobuf/measurement";
         System.out.println("Connecting to broker: ssl://" + broker_host + ":" + broker_port);
-        testClient.connect();
+
 
         System.out.println("Publishing message: :::");
 
@@ -81,7 +128,6 @@ public class ProtobufPahoClient {
         sampleClientAsync.publishWith().topic(topic).qos(MqttQos.AT_LEAST_ONCE).payload(proto.toByteArray()).send();
 
         System.out.println("Message published");
-        testClient.disconnect();
         System.out.println("Disconnected");
 
     }
@@ -90,12 +136,6 @@ public class ProtobufPahoClient {
 
         String topic = "protobuf/alarm";
         System.out.println("Connecting to broker: ssl://" + broker_host + ":" + broker_port);
-        testClient.connect();
-
-        System.out.println("Publishing message: :::");
-
-        testClient.connect();
-
         System.out.println("Publishing message: :::");
 
         InternalCustomAlarmOuter.InternalCustomAlarm proto = InternalCustomAlarm.newBuilder()
@@ -109,9 +149,7 @@ public class ProtobufPahoClient {
         sampleClientAsync.publishWith().topic(topic).qos(MqttQos.AT_LEAST_ONCE).payload(proto.toByteArray()).send();
 
         System.out.println("Message published");
-        testClient.disconnect();
         System.out.println("Disconnected");
-
     }
 
 }
