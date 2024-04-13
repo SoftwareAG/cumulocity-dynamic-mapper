@@ -62,23 +62,30 @@ public class MappingsRepresentationJUnitTest {
   void testIsTemplateTopicSampleValid() {
 
     Mapping m1 = new Mapping();
-    m1.setTemplateTopic("/device/+/east/");
     m1.setTemplateTopicSample("/device/us/east/");
     m1.setSubscriptionTopic("/device/#");
     assertEquals(new ArrayList<ValidationError>(), MappingRepresentation.isTemplateTopicSampleAndSubscriptionTopicValid(m1));
 
     Mapping m2 = new Mapping();
-    m2.setTemplateTopic("/device");
     m2.setTemplateTopicSample("/device");
     m2.setSubscriptionTopic("/device/#");
     ValidationError[] l2 = { ValidationError.TemplateTopicSample_Must_Match_The_SubscriptionTopic };
     assertEquals(Arrays.asList(l2), MappingRepresentation.isTemplateTopicSampleAndSubscriptionTopicValid(m2));
 
     Mapping m3 = new Mapping();
-    m3.setTemplateTopic("/device/");
     m3.setTemplateTopicSample("/device/");
     m3.setSubscriptionTopic("/device/#");
     assertEquals(new ArrayList<ValidationError>(), MappingRepresentation.isTemplateTopicSampleAndSubscriptionTopicValid(m3));
+
+    Mapping m4 = new Mapping();
+    m4.setTemplateTopicSample("/plant1/line1/device1_measure1_Type/end");
+    m4.setSubscriptionTopic("/plant1/+/+/end");
+    assertEquals(new ArrayList<ValidationError>(), MappingRepresentation.isTemplateTopicSampleAndSubscriptionTopicValid(m4));
+
+    Mapping m5 = new Mapping();
+    m5.setTemplateTopicSample("/plant1/line1/device1_measure1_Type");
+    m5.setSubscriptionTopic("/plant1/+/+");
+    assertEquals(new ArrayList<ValidationError>(), MappingRepresentation.isTemplateTopicSampleAndSubscriptionTopicValid(m5));
   }
 
   @Test

@@ -33,62 +33,43 @@
 #
 #  @authors Christoph Strack, Stefan Witschel
 
-import base64
-import requests
 import json
 import sys
 import getopt
 
-
 def main(argv):
     try:
-        opts, args = getopt.getopt(
-            argv, "U:u:p:f:d", ["password=", "url=", "user=", "file=", "dummy="])
+        opts, args = getopt.getopt(argv, "i:o:d", ["input=", "output=", "dummy="])
     except:
-        print('export_mappings.py -U <url> -u <user> -p <password> -f <file>')
+        print("migrate_mappings.py -i <input> -o <output>")
         sys.exit()
 
     for opt, arg in opts:
-        if opt == '-h':
-            print('export_mappings.py -U <url> -u <user> -p <password> -f <file>')
+        if opt == "-h":
+            print("migrate_mappings.py  -i <input> -o <output>")
             sys.exit()
-        elif opt in ("-U", "--url"):
-            url = arg
-        elif opt in ("-p", "--password"):
-            secret = arg
-        elif opt in ("-u", "--user"):
-            user = arg
-        elif opt in ("-f", "--file"):
-            file = arg
+        elif opt in ("-o", "--output"):
+            output = arg
+        elif opt in ("-i", "--input"):
+            input = arg
 
-    url = f"{url}/inventory/managedObjects?type=d11r_mapping&pageSize=1000"
-    up = f'{user}:{secret}'
-    up_encoded = base64.b64encode(up.encode("utf-8")).decode("utf-8")
-    token = f'Basic {up_encoded}'
-
-    headers = {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    }
-
-    response = requests.request("GET", url, headers=headers)
-    jsonResponse = response.json()
     mappings = []
+    with open(input, "r") as f:
+        mappings = json.load(f)
+    # Closing file
+    f.close()
 
-    for index, mapping in enumerate(jsonResponse['managedObjects']):
-        #print ("Original:" + str(managedObject['d11r_mapping']['id']) + "/" + str(managedObject['id']))
-        mapping['d11r_mapping']['id'] = mapping['id']
-        mapping['d11r_mapping']['name'] = 'Mapping - ' + str(index + 1)
-        #print ("Changed:" + str(managedObject['d11r_mapping']['id']))
-        mappings.append(mapping['d11r_mapping'])
+    print(f"Reading {str(len(mappings))} from file {input}")
 
-    #print(json.dumps(mappings, indent=4))
+    for index, mapping in enumerate(mappings):
+        # step 1: create new mapping
+        mapping["subscriptionTopic"] = mapping["templateTopic"]
+        del mapping["templateTopic"]
 
-    print("Writing " + str(len(mappings)) + " to file: " + file)
-
-    with open(file, 'w') as f:
+    with open(output, "w") as f:
         f.write(json.dumps(mappings, indent=4))
+
+    print(f"Migrated {str(len(mappings))} mappings, wrote result to {output}")
 
 
 if __name__ == "__main__":

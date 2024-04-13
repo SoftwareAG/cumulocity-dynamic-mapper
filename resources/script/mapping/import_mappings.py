@@ -50,7 +50,7 @@ def main(argv):
 
     for opt, arg in opts:
         if opt == '-h':
-            print('create.py -U <url> -u <user> -p <password> -f <file>')
+            print('import_mappings.py -U <url> -u <user> -p <password> -f <file>')
             sys.exit()
         elif opt in ("-U", "--url"):
             url = arg

@@ -275,6 +275,7 @@ public class MappingComponent {
                 String errorList = errors.stream().map(e -> e.toString()).reduce("",
                         (res, error) -> res + "[ " + error + " ]");
                 exception.setValue(new RuntimeException("Validation errors:" + errorList));
+               log.error("Tenant {} - Could not update mapping: {} errors {}", tenant, mapping.name, errorList);
             }
             return null;
         });
@@ -291,6 +292,7 @@ public class MappingComponent {
         if (errors.size() != 0) {
             String errorList = errors.stream().map(e -> e.toString()).reduce("",
                     (res, error) -> res + "[ " + error + " ]");
+            log.error("Tenant {} - Could not create mapping: {} errors {}", tenant, mapping.name, errorList);
             throw new RuntimeException(String.format("Validation errors: %s", errorList));
         }
         Mapping result = subscriptionsService.callForTenant(tenant, () -> {
