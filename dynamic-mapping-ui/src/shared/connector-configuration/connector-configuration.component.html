@@ -19,7 +19,7 @@
   ~ @authors Christof Strack
   -->
 
-<div>
+<!-- <div>
   <table
     class="table table-condensed table-striped fixTableHead"
     id="connectorConfigurations"
@@ -36,7 +36,7 @@
             <span></span>
           </label>
         </th>
-        <!-- <th>#</th> -->
+
         <th>Type</th>
         <th>Name</th>
         <th>Activation</th>
@@ -57,9 +57,6 @@
             <span></span>
           </label>
         </td>
-        <!-- <td width="5%" style="padding-top: 12px">
-          {{ i }}
-        </td> -->
         <td width="10%" style="padding-top: 12px">
           <span class="text-12">{{ con?.connectorType }} </span>
         </td>
@@ -76,11 +73,6 @@
           >
             <i [c8yIcon]="con?.enabled ? 'toggle-on' : 'toggle-off'"></i>
           </button>
-          <!-- <i
-            style="text-align: center; width: 100%"
-            [c8yIcon]="!con?.enabled ? 'inactive-state' : 'check'"
-            class="m-r-5"
-          ></i> -->
         </td>
         <td width="20%" style="padding-top: 12px">
           <div class="c8y-realtime">
@@ -150,4 +142,16 @@
       </tr>
     </tbody>
   </table>
-</div>
+</div> -->
+
+<c8y-data-grid
+  #connectorGrid
+  [title]="'Connector configuration'"
+  [selectable]="selectable"
+  [columns]="columns"
+  [selectionPrimaryKey]="'ident'"
+  [rows]="configurations$ | async"
+  [pagination]="pagination"
+  [actionControls]="actionControls"
+>
+</c8y-data-grid>

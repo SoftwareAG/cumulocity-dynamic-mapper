@@ -28,7 +28,7 @@ import {
   ViewEncapsulation
 } from '@angular/core';
 import { AlertService, gettext } from '@c8y/ngx-components';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, from } from 'rxjs';
 import {
   ConfigurationConfigurationModalComponent,
   ConnectorConfiguration,
@@ -77,10 +77,12 @@ export class MappingConnectorComponent implements OnInit, OnDestroy {
     public connectorConfigurationService: ConnectorConfigurationService
   ) {}
 
-  async ngOnInit() {
-    this.feature = await this.sharedService.getFeatures();
-    this.specifications =
-      await this.connectorConfigurationService.getConnectorSpecifications();
+  ngOnInit() {
+    from(
+      this.connectorConfigurationService.getConnectorSpecifications()
+    ).subscribe((specs) => {
+      this.specifications = specs;
+    });
     this.connectorConfigurationService
       .getConnectorConfigurationsLive()
       .subscribe((confs) => {

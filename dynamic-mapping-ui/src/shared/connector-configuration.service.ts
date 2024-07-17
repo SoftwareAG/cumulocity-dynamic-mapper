@@ -31,7 +31,6 @@ import {
   ConnectorSpecification,
   ConnectorStatus,
   ConnectorStatusEvent,
-  Extension,
   PATH_CONFIGURATION_CONNECTION_ENDPOINT,
   PATH_EXTENSION_ENDPOINT,
   PATH_STATUS_CONNECTORS_ENDPOINT,
@@ -59,9 +58,7 @@ export class ConnectorConfigurationService {
 
   private _connectorConfigurations: ConnectorConfiguration[];
   private _connectorSpecifications: ConnectorSpecification[];
-  private _agentId: string;
 
-  private triggerLogs$: Subject<any> = new Subject();
   private triggerConfigurations$: Subject<string> = new Subject();
   private incomingRealtime$: Subject<IEvent> = new Subject();
   private connectorConfigurations$: Observable<ConnectorConfiguration[]>;
@@ -132,11 +129,6 @@ export class ConnectorConfigurationService {
     );
   }
 
-  private updateConnectorStatus = async (p: object) => {
-    const payload = p['data']['data'];
-    this.incomingRealtime$.next(payload);
-  };
-
   async getProcessorExtensions(): Promise<unknown> {
     const response: IFetchResponse = await this.client.fetch(
       `${BASE_URL}/${PATH_EXTENSION_ENDPOINT}`,
@@ -152,44 +144,6 @@ export class ConnectorConfigurationService {
     if (response.status != 200) {
       return undefined;
     }
-    return response.json();
-  }
-
-  async getProcessorExtension(name: string): Promise<Extension> {
-    const response: IFetchResponse = await this.client.fetch(
-      `${BASE_URL}/${PATH_EXTENSION_ENDPOINT}/${name}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        method: 'GET'
-      }
-    );
-
-    if (response.status != 200) {
-      return undefined;
-    }
-    // let result =  (await response.json()) as string[];
-    return response.json();
-  }
-
-  async deleteProcessorExtension(name: string): Promise<string> {
-    const response: IFetchResponse = await this.client.fetch(
-      `${BASE_URL}/${PATH_EXTENSION_ENDPOINT}/${name}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        method: 'DELETE'
-      }
-    );
-
-    if (response.status != 200) {
-      return undefined;
-    }
-    // let result =  (await response.json()) as string[];
     return response.json();
   }
 
